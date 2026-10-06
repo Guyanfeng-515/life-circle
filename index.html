@@ -29,7 +29,15 @@
 
   /* ===== 头部 ===== */
   .hero { margin-bottom: 18px; }
+  .hero-title { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
   .hero h1 { font-size: 24px; font-weight: 700; letter-spacing: 0.01em; line-height: 1.3; }
+  .hero-title .eyebrow {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--ink-2); margin-left: 4px;
+    white-space: nowrap; letter-spacing: 0.02em;
+    max-width: 58%; overflow: hidden; text-overflow: ellipsis;
+  }
+  .hero-title .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
   .hero p { font-size: 13px; color: var(--ink-2); margin-top: 6px; line-height: 1.6; }
 
   /* ===== 辐射位置 ===== */
@@ -40,12 +48,6 @@
     position: relative;
     display: flex; gap: 8px; flex-wrap: wrap;
   }
-  .region-form .eyebrow {
-    display: flex; align-items: center; gap: 6px;
-    font-size: 11px; color: var(--ink-2); margin-left: 4px;
-    white-space: nowrap; flex: 0 0 auto; letter-spacing: 0.02em;
-  }
-  .region-form .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
   .region-form input {
     flex: 1 1 auto; min-width: 0; padding: 12px 14px; font-size: 14px; color: var(--ink);
     background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; outline: none;
@@ -304,7 +306,7 @@
 
   <!-- ===== 视图：头部 ===== -->
   <div class="hero">
-    <h1>生活圈搜索</h1>
+    <div class="hero-title"><h1>生活圈搜索</h1><div class="eyebrow"><span class="dot"></span><span id="eyebrow-place">重庆城市科技学院永川校区</span></div></div>
     <p>搜任意位置周边 1 公里：要买什么、哪里有卖、导航直达。</p>
   </div>
 
@@ -317,7 +319,6 @@
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10v1a7 7 0 0 0 14 0v-1"></path><line x1="12" y1="18" x2="12" y2="21"></line></svg>
       </button>
       <button id="go" type="button">搜周边</button>
-      <div class="eyebrow"><span class="dot"></span><span id="eyebrow-place">重庆城市科技学院永川校区</span></div>
     </div>
     <div class="hist" id="hist-center" style="display:none;"></div>
     <div class="presets" id="presets"></div>
