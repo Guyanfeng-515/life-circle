@@ -38,6 +38,9 @@
   .region { margin-bottom: 14px; }
   .region-label { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
   .region-label b { color: var(--green); font-weight: 600; }
+  .region-label .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+  .region-label .dot + b { margin-left: 4px; }
+  .region-label .dot + b + span { margin-left: auto; }
   .region-form {
     position: relative;
     display: flex; gap: 8px;
@@ -266,14 +269,14 @@
 
   <!-- ===== 视图：头部 ===== -->
   <div class="hero">
-    <div class="eyebrow"><span class="dot"></span><span id="eyebrow-place">重庆城市科技学院永川校区</span></div>
+    <div class="eyebrow"><span id="eyebrow-place">重庆城市科技学院永川校区</span></div>
     <h1>生活圈搜索</h1>
     <p>输入位置和想买的东西，列出该位置 1000 米内能买到的地方，点击导航过去。</p>
   </div>
 
   <!-- ===== 视图：辐射位置 ===== -->
   <div class="region">
-    <div class="region-label"><b>位置</b>（以它为中心搜 1000 米）</div>
+    <div class="region-label"><span class="dot"></span><b>位置</b><span>（以它为中心搜 1000 米）</span></div>
     <div class="region-form">
       <input id="center" type="text" value="重庆城市科技学院永川校区" placeholder="输入重庆市任意位置，如：重庆来福士" autocomplete="off">
       <button class="voice v2" id="voice-c" type="button" aria-label="位置语音输入" title="语音输入位置">
@@ -804,9 +807,16 @@
     return '<button class="preset' + (active ? ' active' : '') + '"' +
       (isHot ? ' data-hot="' + pr + '"' : ' data-preset="' + pr + '"') + '>' + pr + '</button>';
   }
+  function allPositions() {
+    var seen = {}, out = [];
+    Object.keys(AREAS).concat(HOT_SPOTS).forEach(function (n) {
+      if (!seen[n]) { seen[n] = 1; out.push(n); }
+    });
+    return out;
+  }
   function renderPresets() {
     var cur = (els.center.value || '').trim();
-    var all = Object.keys(AREAS).concat(HOT_SPOTS);
+    var all = allPositions();
     var groups = {};
     all.forEach(function (n) {
       var c = cityOf(n);
@@ -825,7 +835,7 @@
   function openCity(c, btn) {
     openCityName = c;
     var groups = {};
-    Object.keys(AREAS).concat(HOT_SPOTS).forEach(function (n) {
+    allPositions().forEach(function (n) {
       var c2 = cityOf(n);
       (groups[c2] = groups[c2] || []).push(n);
     });
@@ -856,7 +866,7 @@
   }
   function renderSub(sn) {
     var groups = {};
-    Object.keys(AREAS).concat(HOT_SPOTS).forEach(function (n) {
+    allPositions().forEach(function (n) {
       var c2 = cityOf(n);
       (groups[c2] = groups[c2] || []).push(n);
     });
