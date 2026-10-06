@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>生活圈 · 周边搜索</title>
+<link rel="manifest" href="./manifest.json">
+<meta name="theme-color" content="#2E7D6E">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="apple-touch-icon" href="./icons/icon.png">
+<link rel="icon" type="image/png" href="./icons/icon.png">
+<style>
+  :root {
+    --bg: #F5F6F3;
+    --card: #FFFFFF;
+    --ink: #22303A;
+    --ink-2: #5B6B76;
+    --line: #E3E7E2;
+    --green: #2E7D6E;
+    --green-soft: #E3F0EC;
+    --orange: #E8874E;
+    --orange-soft: #FBEEE3;
+    --red: #C2543F;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { background: var(--bg); color: var(--ink); font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif; }
+  .wrap { max-width: 560px; margin: 0 auto; padding: 20px 16px 40px; }
+
+  /* ===== 头部 ===== */
+  .hero { margin-bottom: 18px; }
+  .eyebrow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; letter-spacing: 0.02em; }
+  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
+  .hero h1 { font-size: 24px; font-weight: 700; letter-spacing: 0.01em; line-height: 1.3; }
+  .hero p { font-size: 13px; color: var(--ink-2); margin-top: 6px; line-height: 1.6; }
+
+  /* ===== 辐射位置 ===== */
+  .region { margin-bottom: 14px; }
+  .region-label { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
+  .region-label b { color: var(--green); font-weight: 600; }
+  .region-form {
+    position: relative;
+    display: flex; gap: 8px;
+  }
+  .region-form input {
+    flex: 1 1 auto; min-width: 0; padding: 12px 14px; font-size: 14px; color: var(--ink);
+    background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .region-form input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(46,125,110,0.14); }
+  .region-form input::placeholder { color: #9AA6AF; }
+  .region-form button {
+    flex: 0 0 auto; padding: 0 18px; font-size: 14px; font-weight: 600; color: #fff;
+    background: var(--green); border: none; border-radius: 12px; cursor: pointer; white-space: nowrap;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .region-form button:active { transform: scale(0.98); }
+  .region-form .voice {
+    flex: 0 0 44px; width: 44px; padding: 0; display: flex; align-items: center; justify-content: center;
+    background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; color: var(--ink-2); cursor: pointer;
+    transition: all 0.15s ease;
+  }
+  .region-form .voice:hover { border-color: var(--green); color: var(--green); }
+  .region-form .voice.recording { color: #fff; background: var(--red); border-color: var(--red); animation: mic-pulse 1.1s ease-in-out infinite; }
+  .region-form .voice.disabled { opacity: 0.4; cursor: not-allowed; }
+  .presets { display: flex; gap: 8px; margin-top: 8px; overflow-x: auto; touch-action: pan-x; -webkit-overflow-scrolling: touch; cursor: grab; }
+  .presets.dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+  .presets::-webkit-scrollbar { display: none; }
+  .c-count { display: inline-flex; align-items: center; justify-content: center; min-width: 15px; height: 15px; padding: 0 4px; margin-left: 3px; border-radius: 999px; background: var(--green-soft); color: var(--green); font-size: 10px; font-weight: 700; }
+  .city-btn.active .c-count { background: var(--green); color: #fff; }
+  .presets-pop { display: none; margin-top: 8px; }
+  .presets-pop.open { display: flex; flex-direction: column; gap: 6px; background: var(--green-soft); border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+  .pop-sub { display: flex; gap: 8px; overflow-x: auto; touch-action: pan-x; -webkit-overflow-scrolling: touch; }
+  .pop-pos { display: flex; gap: 8px; overflow-x: auto; touch-action: pan-x; -webkit-overflow-scrolling: touch; }
+  .pop-sub::-webkit-scrollbar, .pop-pos::-webkit-scrollbar { display: none; }
+  .sub-btn { flex: 0 0 auto; white-space: nowrap; border: 1px solid var(--line); background: var(--card); color: var(--ink-2); border-radius: 999px; padding: 5px 12px; font-size: 12px; cursor: pointer; display: inline-flex; align-items: center; gap: 3px; }
+  .sub-btn.active { background: var(--green); border-color: var(--green); color: #fff; }
+  .preset {
+    flex: 0 0 auto; white-space: nowrap;
+    font-size: 12px; padding: 6px 12px; border-radius: 999px; cursor: pointer; white-space: nowrap;
+    background: var(--card); border: 1px solid var(--line); color: var(--ink-2);
+    transition: all 0.15s ease;
+  }
+  .preset:hover { border-color: var(--green); color: var(--green); }
+  .preset.active { background: var(--green-soft); border-color: var(--green); color: var(--green); font-weight: 600; }
+  .tip { font-size: 12px; color: var(--ink-2); background: var(--green-soft); border-radius: 10px; padding: 9px 12px; margin-top: 8px; line-height: 1.6; display: none; }
+  .tip b { color: var(--green); }
+
+  /* ===== 搜索栏 ===== */
+  .searchbox { position: relative; margin-bottom: 14px; }
+  .searchbox svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--ink-2); }
+  .searchbox input {
+    width: 100%; padding: 14px 88px 14px 42px; font-size: 16px; color: var(--ink);
+    background: var(--card); border: 1.5px solid var(--line); border-radius: 14px; outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .searchbox input:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(46,125,110,0.14); }
+  .searchbox input::placeholder { color: #9AA6AF; }
+  .searchbox .clear { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px; display: none; align-items: center; justify-content: center; border: none; background: transparent; color: var(--ink-2); cursor: pointer; border-radius: 50%; }
+  .searchbox .clear:hover { background: var(--green-soft); color: var(--green); }
+  .searchbox.has-text .clear { display: flex; }
+  .searchbox .voice {
+    position: absolute; right: 46px; top: 50%; transform: translateY(-50%); width: 30px; height: 30px;
+    display: flex; align-items: center; justify-content: center; border: none; background: transparent;
+    color: var(--ink-2); cursor: pointer; border-radius: 50%; transition: all 0.15s ease;
+  }
+  .searchbox .voice:hover { background: var(--green-soft); color: var(--green); }
+  .searchbox .voice.recording { color: #fff; background: var(--red); animation: mic-pulse 1.1s ease-in-out infinite; }
+  .searchbox .voice.disabled { opacity: 0.4; cursor: not-allowed; }
+  @keyframes mic-pulse {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(194, 84, 63, 0.45); }
+    50% { box-shadow: 0 0 0 9px rgba(194, 84, 63, 0); }
+  }
+
+  /* ===== 搜索历史下拉（流式：弹出时内容下移，不遮挡；内容多时可上下滚动）===== */
+  .hist {
+    margin-top: 8px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(34, 48, 58, 0.12); padding: 8px;
+    max-height: 114px; overflow-y: auto;
+    -webkit-overflow-scrolling: touch; overscroll-behavior: contain;
+  }
+  .hist::-webkit-scrollbar { width: 4px; }
+  .hist::-webkit-scrollbar-thumb { background: #CBD5D1; border-radius: 4px; }
+  .hist-head { display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--ink-2); padding: 2px 6px 6px; }
+  .hist-head b { color: var(--ink-2); font-weight: 600; }
+  .hist-clear { color: var(--orange); cursor: pointer; font-weight: 600; border: none; background: none; font-size: 11px; }
+  .hist-clear:hover { text-decoration: underline; }
+  .hist-item { display: flex; align-items: center; gap: 8px; padding: 9px 8px; border-radius: 8px; cursor: pointer; font-size: 13px; color: var(--ink); }
+  .hist-item:hover { background: var(--green-soft); color: var(--green); }
+  .hist-item .hi-del { margin-left: auto; color: #B8C2C9; border: none; background: none; cursor: pointer; font-size: 12px; padding: 2px 6px; border-radius: 6px; }
+  .hist-item .hi-del:hover { color: var(--red); background: var(--orange-soft); }
+  .hist-empty { font-size: 12px; color: #9AA6AF; text-align: center; padding: 12px 0; }
+
+  /* ===== 分类 chips（可左右滑动）===== */
+  .chips-scroll { position: relative; display: flex; align-items: center; gap: 6px; margin-bottom: 16px; }
+  .chips { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 6px; touch-action: pan-x; -webkit-overflow-scrolling: touch; cursor: grab; }
+  .chips.dragging { cursor: grabbing; user-select: none; -webkit-user-select: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .cs-btn {
+    flex: 0 0 auto; width: 28px; height: 28px; padding: 0;
+    display: flex; align-items: center; justify-content: center;
+    border: none; background: transparent; color: #9AA6AF;
+    border-radius: 8px; cursor: pointer;
+    transition: all 0.15s ease;
+    transform: translateY(-3px);
+  }
+  .cs-btn svg { width: 16px; height: 16px; display: block; }
+  .cs-btn:hover { background: var(--green-soft); color: var(--green); }
+  .cs-btn:disabled { opacity: 0.25; cursor: default; background: transparent; }
+  .chip {
+    flex: 0 0 auto; padding: 8px 14px; font-size: 13px; color: var(--ink-2);
+    background: var(--card); border: 1px solid var(--line); border-radius: 999px; cursor: pointer;
+    transition: all 0.15s ease; white-space: nowrap;
+  }
+  .chip:hover { border-color: var(--green); color: var(--green); }
+  .chip.active { background: var(--green); border-color: var(--green); color: #fff; font-weight: 600; }
+
+  /* ===== 购买指南 ===== */
+  .guide { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 14px; margin-bottom: 12px; }
+  .guide .g-title { font-size: 13px; font-weight: 700; color: var(--ink); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .guide .g-tag { font-size: 10px; color: #fff; background: var(--orange); border-radius: 999px; padding: 2px 8px; font-weight: 600; }
+  .guide .g-stores { display: flex; flex-wrap: wrap; gap: 8px; }
+  .guide .g-store {
+    font-size: 13px; padding: 7px 13px; border-radius: 999px; cursor: pointer; font-weight: 600;
+    background: var(--orange-soft); color: var(--orange); border: none;
+    transition: background 0.15s ease, transform 0.1s ease;
+  }
+  .guide .g-store:active { transform: scale(0.98); }
+  .guide .g-note { font-size: 12px; color: var(--ink-2); margin-top: 10px; line-height: 1.6; }
+  .guide .g-note b { color: var(--green); }
+  .guide .g-net-title { font-size: 11px; font-weight: 700; color: #9AA6AF; margin: 12px 0 6px; }
+  .guide .g-net { border-top: 1px dashed var(--line); padding: 8px 0 2px; }
+  .guide .g-net-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .guide .g-net-loc { font-size: 11px; color: var(--green); background: var(--green-soft); border-radius: 999px; padding: 1px 7px; margin-left: 6px; font-weight: 600; }
+  .guide .g-net-note { font-size: 12px; color: var(--ink-2); margin-top: 3px; line-height: 1.6; }
+  .guide .g-net-src { font-size: 11px; margin-top: 4px; }
+  .guide .g-net-src a { color: var(--orange); text-decoration: none; font-weight: 600; }
+  .guide .g-net-src a:hover { text-decoration: underline; }
+  .guide .g-net-imgs { display: flex; gap: 8px; overflow-x: auto; margin-top: 8px; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
+  .guide .g-net-imgs::-webkit-scrollbar { display: none; }
+  .guide .g-net-img { flex: 0 0 auto; width: 88px; height: 88px; object-fit: cover; border-radius: 10px; border: 1px solid var(--line); background: var(--card); }
+
+  /* ===== 网上情报 ===== */
+  .netinfo { background: #FFF8EC; border: 1px solid #F0DFC2; border-radius: 14px; padding: 13px 14px; margin-bottom: 12px; }
+  .netinfo .ni-title { font-size: 12px; font-weight: 700; color: #9A6A1F; display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+  .netinfo .ni-item { border-top: 1px dashed #EAD9B8; padding: 8px 0 2px; }
+  .netinfo .ni-name { font-size: 13px; font-weight: 600; color: var(--ink); }
+  .netinfo .ni-loc { font-size: 11px; color: #9A6A1F; background: #F7E8CC; border-radius: 999px; padding: 1px 7px; margin-left: 6px; font-weight: 600; }
+  .netinfo .ni-note { font-size: 12px; color: var(--ink-2); margin-top: 3px; line-height: 1.6; }
+  .netinfo .ni-src { font-size: 11px; margin-top: 4px; }
+  .netinfo .ni-src a { color: #9A6A1F; text-decoration: none; font-weight: 600; }
+  .netinfo .ni-src a:hover { text-decoration: underline; }
+
+  /* ===== 结果统计 ===== */
+  .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .meta .count { font-size: 13px; color: var(--ink-2); }
+  .meta .count b { color: var(--green); font-size: 15px; }
+  .fold-btn {
+    flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px; margin-left: 8px; border: 1px solid var(--line);
+    border-radius: 999px; background: var(--card); color: var(--green); cursor: pointer; padding: 0;
+  }
+  .fold-btn:hover { background: var(--green-soft); }
+  .meta .hint { font-size: 11px; color: #9AA6AF; }
+
+  /* ===== 结果列表 ===== */
+  .list { display: flex; flex-direction: column; gap: 10px; }
+  .item {
+    display: flex; align-items: flex-start; gap: 12px; padding: 14px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 14px;
+    transition: border-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+    text-decoration: none; color: inherit; cursor: pointer;
+  }
+  .item:hover { border-color: var(--green); box-shadow: 0 2px 8px rgba(34,48,58,0.06); }
+  .item:active { transform: scale(0.99); }
+  .item .go {
+    flex: 0 0 auto; margin-top: 2px; display: flex; align-items: center; gap: 4px;
+    font-size: 12px; font-weight: 600; color: var(--green);
+    background: var(--green-soft); border-radius: 999px; padding: 6px 10px; white-space: nowrap;
+    transition: background 0.15s ease;
+  }
+  .item .go svg { width: 14px; height: 14px; }
+  .item:hover .go { background: var(--green); color: #fff; }
+  .item .icon {
+    flex: 0 0 40px; width: 40px; height: 40px; border-radius: 11px;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--green-soft); color: var(--green);
+  }
+  .item.cat-market .icon { background: var(--orange-soft); color: var(--orange); }
+  .item.cat-food .icon { background: #FDEEDF; color: #D97E3D; }
+  .item .body { flex: 1 1 auto; min-width: 0; }
+  .item .name { font-size: 15px; font-weight: 600; line-height: 1.4; }
+  .item .name mark { background: #FBE5B8; color: inherit; border-radius: 2px; padding: 0 1px; }
+  .item .loc { font-size: 12px; color: var(--ink-2); margin-top: 3px; line-height: 1.5; }
+  .item .badges { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .badge { font-size: 11px; padding: 3px 9px; border-radius: 999px; background: var(--green-soft); color: var(--green); font-weight: 600; }
+  .badge.orange { background: var(--orange-soft); color: var(--orange); }
+  .badge.gray { background: #EFF2F0; color: var(--ink-2); }
+
+  /* ===== 空态 ===== */
+  .empty { text-align: center; padding: 44px 20px; color: var(--ink-2); }
+  .empty .ring {
+    width: 64px; height: 64px; margin: 0 auto 16px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--green-soft); color: var(--green);
+  }
+  .empty h3 { font-size: 15px; color: var(--ink); margin-bottom: 6px; font-weight: 600; }
+  .empty p { font-size: 13px; line-height: 1.6; }
+  .empty .try { margin-top: 14px; font-size: 12px; color: #9AA6AF; }
+
+  /* ===== 页脚 ===== */
+  .foot { margin-top: 20px; font-size: 11px; color: #9AA6AF; line-height: 1.7; border-top: 1px solid var(--line); padding-top: 12px; }
+  .foot b { color: var(--ink-2); }
+
+  /* 移动端 */
+  @media (max-width: 768px) {
+    .wrap { padding: 16px 12px 36px; }
+    .hero h1 { font-size: 21px; }
+    .item { padding: 12px; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- ===== 视图：头部 ===== -->
+  <div class="hero">
+    <div class="eyebrow"><span class="dot"></span><span id="eyebrow-place">重庆城市科技学院永川校区</span></div>
+    <h1>生活圈搜索</h1>
+    <p>输入位置和想买的东西，列出该位置 1000 米内能买到的地方，点击导航过去。</p>
+  </div>
+
+  <!-- ===== 视图：辐射位置 ===== -->
+  <div class="region">
+    <div class="region-label"><b>位置</b>（以它为中心搜 1000 米）</div>
+    <div class="region-form">
+      <input id="center" type="text" value="重庆城市科技学院永川校区" placeholder="输入重庆市任意位置，如：重庆来福士" autocomplete="off">
+      <button class="voice v2" id="voice-c" type="button" aria-label="位置语音输入" title="语音输入位置">
+        <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10v1a7 7 0 0 0 14 0v-1"></path><line x1="12" y1="18" x2="12" y2="21"></line></svg>
+      </button>
+      <button id="go" type="button">搜周边</button>
+    </div>
+    <div class="hist" id="hist-center" style="display:none;"></div>
+    <div class="presets" id="presets"></div>
+    <div class="presets-pop" id="presets-pop"></div>
+    <div class="tip" id="tip"></div>
+  </div>
+
+  <!-- ===== 视图：搜索栏 ===== -->
+  <div class="searchbox" id="searchbox">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+    <input id="q" type="text" placeholder="要买什么？如：感冒药、充电线、跳绳、矿泉水" autocomplete="off">
+    <button class="voice" id="voice" type="button" aria-label="语音输入" title="语音输入">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10v1a7 7 0 0 0 14 0v-1"></path><line x1="12" y1="18" x2="12" y2="21"></line></svg>
+    </button>
+    <button class="clear" id="clear" aria-label="清空">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>
+    </button>
+  </div>
+  <div class="hist" id="hist-q" style="display:none;"></div>
+
+  <!-- ===== 视图：分类 chips（可左右滑动） ===== -->
+  <div class="chips-scroll">
+    <button class="cs-btn cs-left" id="cs-left" type="button" aria-label="分类左滑" title="左滑">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"></path></svg>
+    </button>
+    <div class="chips" id="chips"></div>
+    <button class="cs-btn cs-right" id="cs-right" type="button" aria-label="分类右滑" title="右滑">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"></path></svg>
+    </button>
+  </div>
+
+  <!-- ===== 视图：购买指南 ===== -->
+  <div class="guide" id="guide" style="display:none;"></div>
+
+  <!-- ===== 视图：结果 ===== -->
+  <div class="meta">
+    <div class="count" id="count"></div>
+    <button class="fold-btn" id="fold-btn" type="button" aria-label="收缩/展开列表" title="收缩/展开列表">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path class="fold-arrow" d="M6 9l6 6 6-6"></path></svg>
+    </button>
+    <div class="hint">距离为高德标注，步行按约 80 米/分钟估算</div>
+  </div>
+  <div class="list" id="list"></div>
+  <div class="empty" id="empty" style="display:none;"></div>
+
+  <!-- ===== 视图：网上情报（列表下方） ===== -->
+  <div class="netinfo" id="netinfo" style="display:none;"></div>
+
+  <!-- ===== 视图：页脚 ===== -->
+  <div class="foot">
+    <b>数据说明：</b><span id="data-note">列表按位置分组显示——「重庆城市科技学院永川校区」79 家、「西城佳园」26 家、「重庆来福士」62 家、「重庆洪崖洞」18 家、「重庆解放碑」22 家（城科/西城/来福士为高德抓取，洪崖洞/解放碑为网上公开信息整理，均为 1000 米内；距离为估算，步行按约 80 米/分钟）。位置框切换输入即切换列表。</span><br>
+    <b>搜周边：</b>位置已收录时，点「搜周边」直接在应用内列出该位置周边结果（不再跳高德）；需要更全的实时列表，点提示里的「打开高德实时列表」。位置未收录时，跳高德实时搜索，并把位置告诉我，我抓一次存进来。<br>
+    <b>使用提示：</b>点击任意结果卡片，直接打开高德上这家店的详情页，可查看位置、路线并一键导航；搜索框输入要买的东西，会给出"大概可能买到的地方"；列表下方是网上/视频查到的周边情报。<br>
+    <b>语音输入：</b>位置栏和搜索框右侧各有一个麦克风按钮。请用 <b>http://localhost:8617</b> 打开本页（file:// 方式浏览器不弹麦克风授权框），首次点麦克风时在弹窗里点「允许」即可说话输入。<br>
+    <b>搜索历史：</b>点一下位置框或商品框，会弹出该框的搜索历史，点历史项直接搜；可单条删除或一键清空（保存在本机浏览器）。
+  </div>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ===== 数据 =====
+   * cat: 超市便利店 / 菜市场 / 水果 / 餐饮 / 服务
+   * dist: 距中心米数；null 表示校内/未标注精确距离
+   * AREAS: 按位置分组的周边数据，位置框输入匹配哪个位置就显示哪个位置的列表
+   */
+  var AREAS = {
+    '重庆城市科技学院永川校区': [
+      { name: '好上好校园超市', cat: '超市便利店', dist: 80, loc: '校内', pid: 'B0M16DO81U' },
+      { name: '永川区重庆城市科技学院超市', cat: '超市便利店', dist: 80, loc: '校内', pid: 'B0M6CHV3YW' },
+      { name: '近邻宝柜子（快递驿站）', cat: '服务', dist: 80, loc: '校内', pid: 'B0MUTOM1V5' },
+      { name: '城市优选超市', cat: '超市便利店', dist: 268, loc: '校门口', pid: 'B0M6YRSCEL' },
+      { name: '城科树下超市', cat: '超市便利店', dist: 314, loc: '校门口', pid: 'B0MAPCWNNO' },
+      { name: '易扬徐食品商行', cat: '超市便利店', dist: 438, loc: '校外', pid: 'B0HATMXKDA' },
+      { name: '谢姐副食', cat: '超市便利店', dist: 448, loc: '校外', pid: 'B0GRAS230G' },
+      { name: '罗森便利店', cat: '超市便利店', dist: 482, loc: '校外', pid: 'B0K6G4Y62V' },
+      { name: '永钢市场', cat: '菜市场', dist: 555, loc: '校外', pid: 'B0FFL1LDWX' },
+      { name: '新供销网络超市', cat: '超市便利店', dist: 635, loc: '校外', pid: 'B0FFG0UJQ0' },
+      { name: '兴尚超市', cat: '超市便利店', dist: 661, loc: '校外', pid: 'B0FFHF7K4Z' },
+      { name: '果奇仕（永川城科店）', cat: '水果', dist: 684, loc: '校外', pid: 'B0M2MLNKR5' },
+      { name: '桥头酒水超市', cat: '超市便利店', dist: 681, loc: '校外', pid: 'B0FFG0UJNU' },
+      { name: '美宜佳（重庆大学店）', cat: '超市便利店', dist: 686, loc: '校外', pid: 'B0GU51WLBO' },
+      { name: '永庆超市', cat: '超市便利店', dist: 716, loc: '校外', pid: 'B0H1ZK4W5D' },
+      { name: '平价批发超市', cat: '超市便利店', dist: 718, loc: '校外', pid: 'B0KDZXNY6Y' },
+      { name: '哆来玛折扣超市（城科店）', cat: '超市便利店', dist: 731, loc: '校外', pid: 'B0LBFCZA7C' },
+      { name: '瑞幸咖啡（图书馆店）', cat: '餐饮', dist: 138, loc: '校内（图书馆旁）', pid: 'B0KRCSC1X2' },
+      { name: '塔斯汀中国汉堡', cat: '餐饮', dist: 231, loc: '校内', pid: 'B0K27U49PO' },
+      { name: '金海家肉蟹煲（城科校内店）', cat: '餐饮', dist: 145, loc: '校内', pid: 'B0HU9H71YK' },
+      { name: '幸运咖', cat: '餐饮', dist: 279, loc: '校内', pid: 'B0JB1MED8F' },
+      { name: '牛腩饭', cat: '餐饮', dist: null, loc: '校门口周边', pid: '' },
+      { name: '妈妈驿站（城科店）', cat: '服务', dist: 320, loc: '校内（快递点）', pid: 'B0K3556DHC' },
+      { name: '袁记云饺（城科店）', cat: '餐饮', dist: 227, loc: '校外', pid: '' },
+      { name: '绝味鸭脖（城科店）', cat: '餐饮', dist: 239, loc: '校外', pid: '' },
+      { name: '帽牌货冒菜（城科店）', cat: '餐饮', dist: 99, loc: '校外', pid: '' },
+      { name: '肯德基（城科永川校区店）', cat: '餐饮', dist: 467, loc: '校外', pid: '' },
+      { name: '重庆江湖菜木桶饭', cat: '餐饮', dist: 582, loc: '校外', pid: '' },
+      { name: '临榆炸鸡腿（城科店）', cat: '餐饮', dist: 616, loc: '校外', pid: '' },
+      { name: '一之螺·柳州螺蛳粉（城科店）', cat: '餐饮', dist: 421, loc: '校外', pid: '' },
+      { name: '如意餐厅（光彩大道店）', cat: '餐饮', dist: 622, loc: '光彩大道', pid: '' },
+      { name: '朱海龙全牛米粉面', cat: '餐饮', dist: 270, loc: '校外', pid: '' },
+      { name: '朝阳洲牛肉粉面', cat: '餐饮', dist: 275, loc: '校外', pid: '' },
+      { name: '皇尚吉祥馄饨（三期店）', cat: '餐饮', dist: 254, loc: '三期商业街', pid: '' },
+      { name: '惠利·牛油拌饭', cat: '餐饮', dist: 408, loc: '校外', pid: '' },
+      { name: '莱得快酸辣粉（三期商业街店）', cat: '餐饮', dist: 236, loc: '三期商业街', pid: '' },
+      { name: '舒氏重庆鸡公煲', cat: '餐饮', dist: 674, loc: '校外', pid: '' },
+      { name: '北村韩屋韩式炸鸡（城科店）', cat: '餐饮', dist: 609, loc: '校外', pid: '' },
+      { name: '潘小妹叫了个炸鸡（城科三期店）', cat: '餐饮', dist: 430, loc: '三期商业街', pid: '' },
+      { name: '肖记贵州羊肉粉', cat: '餐饮', dist: 625, loc: '校外', pid: '' },
+      { name: '沙县小吃', cat: '餐饮', dist: 618, loc: '校外', pid: '' },
+      { name: '蜜雪冰城（城科7栋商业街店）', cat: '餐饮', dist: 104, loc: '7栋商业街', pid: '' },
+      { name: '益禾堂（城科校内店）', cat: '餐饮', dist: 476, loc: '校内', pid: '' },
+      { name: '古茗（城科店）', cat: '餐饮', dist: 380, loc: '校外', pid: '' },
+      { name: '茶百道（城科店）', cat: '餐饮', dist: 627, loc: '校外', pid: '' },
+      { name: '书亦烧仙草（光彩大道店）', cat: '餐饮', dist: 527, loc: '光彩大道', pid: '' },
+      { name: '1点点（城科店）', cat: '餐饮', dist: 483, loc: '老商业街', pid: '' },
+      { name: '城科药房', cat: '药店', dist: 547, loc: '校外', pid: '' },
+      { name: '昌盛大药房（永川惠康药店）', cat: '药店', dist: 568, loc: '校外', pid: '' },
+      { name: '蔡和庆药房', cat: '药店', dist: 661, loc: '校外', pid: '' },
+      { name: '同窗造型', cat: '理发', dist: 99, loc: '校门口', pid: '' },
+      { name: '首艺造型（光彩大道店）', cat: '理发', dist: 603, loc: '光彩大道', pid: '' },
+      { name: '完美主义形象沙龙', cat: '理发', dist: 523, loc: '校外', pid: '' },
+      { name: 'V8潮牌接发烫染连锁（城科店）', cat: '理发', dist: 701, loc: '校外', pid: '' },
+      { name: '极剪', cat: '理发', dist: 667, loc: '校外', pid: '' },
+      { name: '老宾理发', cat: '理发', dist: 451, loc: '校外', pid: '' },
+      { name: '米米美业', cat: '理发', dist: 685, loc: '校外', pid: '' },
+      { name: '轻颜美发（二分店）', cat: '理发', dist: 735, loc: '校外', pid: '' },
+      { name: '老兵理发', cat: '理发', dist: 448, loc: '校外', pid: '' },
+      { name: '梵尚FINSUN烫染工作室', cat: '理发', dist: 651, loc: '校外', pid: '' },
+      { name: '顺丰速运（城科店）', cat: '服务', dist: 99, loc: '校门口', pid: '' },
+      { name: '京东校园服务站（城科站）', cat: '服务', dist: 102, loc: '校内', pid: '' },
+      { name: '圆通快递站', cat: '服务', dist: 104, loc: '校门口', pid: '' },
+      { name: '永钢村快递驿站', cat: '服务', dist: 458, loc: '校外', pid: '' },
+      { name: '拼多多驿站', cat: '服务', dist: 479, loc: '校外', pid: '' },
+      { name: '菜鸟驿站（重大城科院）', cat: '服务', dist: 490, loc: '校外', pid: '' },
+      { name: '永岗村快递驿站', cat: '服务', dist: 588, loc: '校外', pid: '' },
+      { name: '中国邮政', cat: '服务', dist: 618, loc: '校外', pid: '' },
+      { name: '中国邮政储蓄银行（石河支行）', cat: '服务', dist: 694, loc: '校外', pid: '' },
+      { name: '东成五金机电桥隧物资', cat: '服务', dist: 841, loc: '校外', pid: '' },
+      { name: '天能五金大富水站', cat: '服务', dist: 550, loc: '校外', pid: '' },
+      { name: '桥头五金店', cat: '服务', dist: 847, loc: '校外', pid: '' },
+      { name: '海尔汽车充电站（永钢村站）', cat: '服务', dist: 657, loc: '永钢村', pid: '' },
+      { name: '重庆城市科技学院停车场', cat: '服务', dist: 732, loc: '校内', pid: '' },
+      { name: '洗车场停车场', cat: '服务', dist: 694, loc: '校外', pid: '' },
+      { name: '益锐机械东侧停车场', cat: '服务', dist: 674, loc: '校外', pid: '' },
+      { name: '地面停车场', cat: '服务', dist: 846, loc: '校外', pid: '' },
+      { name: '联一健身', cat: '服务', dist: 622, loc: '校外', pid: '' },
+      { name: 'TP健身', cat: '服务', dist: 728, loc: '校外', pid: '' }
+    ],
+    '西城佳园': [
+      { name: '金辉便利店（福溪大道店）', cat: '超市便利店', dist: 99, loc: '家门口附近', pid: 'B0JGU1INNP' },
+      { name: '宜蓉超市（西城佳园店）', cat: '超市便利店', dist: 196, loc: '西城佳园门口', pid: 'B0FFJ301DS' },
+      { name: '熙城生鲜超市（西城佳园店）', cat: '超市便利店', dist: 246, loc: '西城佳园门口', pid: 'B0G24ADYPW' },
+      { name: '若家便利店（半岛逸景店）', cat: '超市便利店', dist: 395, loc: '半岛逸景', pid: 'B0FFHYN6YI' },
+      { name: '好运来生活超市（中南·上悦城1期店）', cat: '超市便利店', dist: 395, loc: '中南·上悦城', pid: 'B0KD05W73K' },
+      { name: '千易超市（半岛逸景三组团店）', cat: '超市便利店', dist: 457, loc: '半岛逸景', pid: '' },
+      { name: '家福超市（藕田路店）', cat: '超市便利店', dist: 491, loc: '藕田路', pid: '' },
+      { name: '谊品生鲜（半岛逸景二组团店）', cat: '菜市场', dist: 558, loc: '半岛逸景', pid: 'B0FFK0EX5G' },
+      { name: '大渡口区藕田路7号市场', cat: '菜市场', dist: 600, loc: '藕田路', pid: '' },
+      { name: '乐园便利超市', cat: '超市便利店', dist: 670, loc: '', pid: '' },
+      { name: '悦家淳和生活市集', cat: '超市便利店', dist: 688, loc: '', pid: 'B0MR9H8D3X' },
+      { name: '玖禾生鲜超市', cat: '菜市场', dist: 755, loc: '', pid: '' },
+      { name: '农民菜市（半岛逸景农贸市场店）', cat: '菜市场', dist: 796, loc: '半岛逸景', pid: '' },
+      { name: '菜老包（半岛逸景市场店）', cat: '菜市场', dist: 802, loc: '半岛逸景', pid: '' },
+      { name: '永辉线上超市（金家湾店）', cat: '超市便利店', dist: 837, loc: '金家湾', pid: 'B0L3SC3CEK' },
+      { name: '左菜右果生鲜批发', cat: '菜市场', dist: 852, loc: '', pid: '' },
+      { name: '平价水果店', cat: '水果', dist: 860, loc: '', pid: '' },
+      { name: '半岛逸景农贸市场', cat: '菜市场', dist: 861, loc: '半岛逸景', pid: 'B0KRBCVJNQ' },
+      { name: '半岛乐园菜市场', cat: '菜市场', dist: 859, loc: '', pid: '' },
+      { name: '三胖水果（融创春晖十里阅峰庭店）', cat: '水果', dist: 874, loc: '融创春晖十里', pid: '' },
+      { name: '光廷生鲜', cat: '菜市场', dist: 875, loc: '', pid: '' },
+      { name: '好邻居便利店（金湾路店）', cat: '超市便利店', dist: 898, loc: '金湾路', pid: '' },
+      { name: '纤果纪水果店（钢城印象店）', cat: '水果', dist: 919, loc: '钢城印象', pid: '' },
+      { name: '乐献超市（天泰·凤阳小镇北区店）', cat: '超市便利店', dist: 914, loc: '天泰·凤阳小镇', pid: 'B0FFJ17I56' },
+      { name: '念佳便利店（半岛逸景2店）', cat: '超市便利店', dist: 922, loc: '半岛逸景', pid: '' },
+      { name: '家和超市（金阳路店）', cat: '超市便利店', dist: 963, loc: '金阳路', pid: '' }
+    ],
+    '重庆来福士': [
+      { name: '重庆来福士', cat: '商场', dist: 99, loc: '朝天门接圣街8号', pid: 'B0FFFQLXRT' },
+      { name: '全家便利店（来福士广场店）', cat: '超市便利店', dist: 99, loc: '来福士广场内', pid: 'B0M2KDIX5F' },
+      { name: 'KKV（来福士主力店）', cat: '超市便利店', dist: 106, loc: '来福士广场内', pid: 'B0K0DSDC0Q' },
+      { name: '超食代食肆阁生鲜超市', cat: '超市便利店', dist: 109, loc: '', pid: 'B0MDAC3ZMY' },
+      { name: '地标时代购物广场', cat: '商场', dist: 99, loc: '朝天门', pid: '' },
+      { name: '朝天门·城里', cat: '商场', dist: 165, loc: '朝天门', pid: '' },
+      { name: '京东便利店（光控朝天门中心店）', cat: '超市便利店', dist: 190, loc: '光控朝天门中心', pid: 'B0HGXZYC44' },
+      { name: '可购（大融汇店）', cat: '超市便利店', dist: 222, loc: '大融汇', pid: 'B0FFIIRDO8' },
+      { name: '罗森（大融汇店）', cat: '超市便利店', dist: 225, loc: '大融汇', pid: 'B0J2TSXZY5' },
+      { name: '协信商厦', cat: '商场', dist: 279, loc: '', pid: '' },
+      { name: '金海洋商场', cat: '商场', dist: 291, loc: '朝天门批发', pid: '' },
+      { name: '大融汇', cat: '商场', dist: 308, loc: '', pid: '' },
+      { name: '海客便利店（东方针织内衣城店）', cat: '超市便利店', dist: 325, loc: '东方针织内衣城', pid: '' },
+      { name: '长德商场', cat: '商场', dist: 350, loc: '', pid: '' },
+      { name: '银星商城', cat: '商场', dist: 367, loc: '', pid: '' },
+      { name: '恒升商场', cat: '商场', dist: 396, loc: '', pid: '' },
+      { name: '天门商场（朝天门第十三交易区）', cat: '商场', dist: 416, loc: '朝天门批发', pid: '' },
+      { name: '美宜佳（渝03036两江嘉苑店）', cat: '超市便利店', dist: 427, loc: '两江嘉苑', pid: '' },
+      { name: '大正商场童装城', cat: '商场', dist: 437, loc: '大正大厦', pid: '' },
+      { name: '大正商场（朝天门第十二交易区）', cat: '商场', dist: 470, loc: '朝天门批发', pid: '' },
+      { name: '美宜佳（御景江山店）', cat: '超市便利店', dist: 485, loc: '御景江山', pid: '' },
+      { name: '陌宁便利店（湖广会馆店）', cat: '超市便利店', dist: 492, loc: '湖广会馆', pid: '' },
+      { name: '港渝广场', cat: '商场', dist: 517, loc: '', pid: '' },
+      { name: '南楼商场', cat: '商场', dist: 522, loc: '', pid: '' },
+      { name: '大生商场', cat: '商场', dist: 533, loc: '', pid: '' },
+      { name: '美宜佳（道门口店）', cat: '超市便利店', dist: 601, loc: '道门口', pid: '' },
+      { name: '新重庆广场（九尺坎）', cat: '商场', dist: 647, loc: '九尺坎', pid: '' },
+      { name: '菲玛斯商场', cat: '商场', dist: 674, loc: '', pid: '' },
+      { name: '罗森（渝中区小什字店）', cat: '超市便利店', dist: 748, loc: '小什字', pid: '' },
+      { name: 'S95超次元中心', cat: '商场', dist: 750, loc: '', pid: '' },
+      { name: '全家便利店（小什字店）', cat: '超市便利店', dist: 905, loc: '小什字', pid: '' },
+      { name: '罗森（五一路店）', cat: '超市便利店', dist: 926, loc: '五一路', pid: '' },
+      { name: '罗森（白象居店）', cat: '超市便利店', dist: 960, loc: '白象居', pid: '' },
+      { name: '罗森（临江路店）', cat: '超市便利店', dist: 969, loc: '临江路', pid: '' },
+      { name: '街坊邻居（阳光100店）', cat: '超市便利店', dist: 972, loc: '阳光100', pid: '' },
+      { name: '尊客超市（武夷滨江店）', cat: '超市便利店', dist: 993, loc: '武夷滨江', pid: '' },
+      { name: '协信星光妙塘', cat: '商场', dist: 946, loc: '', pid: '' },
+      { name: 'Ole精品超市（来福士广场店）', cat: '超市便利店', dist: 99, loc: '来福士广场F1', pid: '' },
+      { name: '茶颜悦色（来福士店）', cat: '餐饮', dist: 99, loc: '来福士购物中心L1层88-89号', pid: '' },
+      { name: '奈雪的茶（重庆来福士广场店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: '书亦烧仙草（来福士店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: '茶百道（来福士广场店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: '一只酸奶牛（来福士A店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: '五条人糖水铺（来福士店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: '库迪咖啡（朝天门来福士购物中心店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: 'CHAFORU星卡里（来福士店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: 'Costa Coffee（重庆来福士广场5F店）', cat: '餐饮', dist: 99, loc: '来福士广场5F', pid: '' },
+      { name: '爷爷不泡茶（来福士广场店）', cat: '餐饮', dist: 99, loc: '来福士广场内', pid: '' },
+      { name: '瑞幸咖啡（超食代店）', cat: '餐饮', dist: 110, loc: '超食代美食街区一楼', pid: '' },
+      { name: '茉莉奶白（超食代店）', cat: '餐饮', dist: 110, loc: '超食代美食街区一楼', pid: '' },
+      { name: '胖哥俩肉蟹煲（重庆来福士店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: '泰香米泰国餐厅（江景餐厅·来福士店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: '三生三味密宗川菜（来福士店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: '喜姐炸串（来福士购物中心店）', cat: '餐饮', dist: 99, loc: '来福士购物中心内', pid: '' },
+      { name: '泰熙家（超食代店）', cat: '餐饮', dist: 110, loc: '超食代美食街区', pid: '' },
+      { name: '盆源干锅（超食代店）', cat: '餐饮', dist: 110, loc: '超食代美食街区', pid: '' },
+      { name: '蜀秀（超食代店）', cat: '餐饮', dist: 110, loc: '超食代美食街区', pid: '' },
+      { name: '正南齐北（超食代店）', cat: '餐饮', dist: 110, loc: '超食代美食街区', pid: '' },
+      { name: '怪味胡豆（超食代店）', cat: '餐饮', dist: 110, loc: '超食代美食街区', pid: '' },
+      { name: '白马记忆里（来福士3楼）', cat: '餐饮', dist: 99, loc: '来福士购物中心三楼', pid: '' },
+      { name: 'PERFECT DIARY完美日记（重庆来福士店）', cat: '服务', dist: 99, loc: '来福士F1', pid: '' },
+      { name: '屈臣氏（重庆来福士店）', cat: '服务', dist: 99, loc: '来福士F1', pid: '' }
+    ],
+    '重庆洪崖洞': [
+      { name: '优客家便利店（洪崖洞店）', cat: '超市便利店', dist: 150, loc: '洪崖洞景区内', pid: '' },
+      { name: '合家24小时便利店（临江支路店）', cat: '超市便利店', dist: 350, loc: '临江支路32号', pid: '' },
+      { name: '巴渝人家土特产超市', cat: '超市便利店', dist: 200, loc: '洪崖洞景区内', pid: '' },
+      { name: 'LAWSON罗森（临江路店）', cat: '超市便利店', dist: 400, loc: '临江路', pid: '' },
+      { name: '可购便利店', cat: '超市便利店', dist: 300, loc: '洪崖洞附近', pid: '' },
+      { name: '瑞幸咖啡（洪崖好吃街店）', cat: '餐饮', dist: 100, loc: '洪崖好吃街', pid: '' },
+      { name: '茶颜悦色（洪崖洞入口对面）', cat: '餐饮', dist: 100, loc: '江滨江路88号洪崖洞入口处', pid: '' },
+      { name: '望洪崖老火锅', cat: '餐饮', dist: 120, loc: '洪崖洞入口旁', pid: '' },
+      { name: '唐记小笼（解放碑步行街店）', cat: '餐饮', dist: 250, loc: '解放碑步行街', pid: '' },
+      { name: '洞穴咖啡', cat: '餐饮', dist: 200, loc: '洪崖洞附近', pid: '' },
+      { name: '巴六门老火锅', cat: '餐饮', dist: 180, loc: '洪崖洞附近', pid: '' },
+      { name: '蒋二两豌杂面（魁星楼）', cat: '餐饮', dist: 220, loc: '魁星楼', pid: '' },
+      { name: '重庆特色面庄', cat: '餐饮', dist: 150, loc: '洪崖洞附近', pid: '' },
+      { name: '星巴克', cat: '餐饮', dist: 300, loc: '洪崖洞附近', pid: '' },
+      { name: '戴家巷本地小馆', cat: '餐饮', dist: 400, loc: '戴家巷', pid: '' },
+      { name: '海盗街（洪崖洞异国美食街店）', cat: '商场', dist: 100, loc: '洪崖洞内', pid: '' },
+      { name: '美美百货', cat: '商场', dist: 300, loc: '洪崖洞附近', pid: '' },
+      { name: '大都会广场', cat: '商场', dist: 350, loc: '洪崖洞附近', pid: '' }
+    ],
+    '重庆解放碑': [
+      { name: '7-11（解放碑店）', cat: '超市便利店', dist: 150, loc: '渝中区正阳街68号高品美食街旁', pid: '' },
+      { name: '罗森（泰迪熊主题旗舰店）', cat: '超市便利店', dist: 100, loc: '八一路53号大都会广场L110', pid: '' },
+      { name: '罗森（小什字店）', cat: '超市便利店', dist: 600, loc: '解放碑五一路95号', pid: '' },
+      { name: '罗森（五一路店）', cat: '超市便利店', dist: 500, loc: '五一路74号', pid: '' },
+      { name: '罗森（复旦中学店）', cat: '超市便利店', dist: 800, loc: '凯旋路16号附9号较场口', pid: '' },
+      { name: '罗森（得意世界店）', cat: '超市便利店', dist: 350, loc: '较场口88号C区', pid: '' },
+      { name: '重百超市（临江店）', cat: '超市便利店', dist: 300, loc: '邹容路116号重庆大世界酒店负1楼', pid: '' },
+      { name: '家乐福超市', cat: '超市便利店', dist: 500, loc: '解放碑商圈', pid: '' },
+      { name: '永辉超市', cat: '超市便利店', dist: 550, loc: '解放碑商圈', pid: '' },
+      { name: '古茗（渝中八一好吃街店）', cat: '餐饮', dist: 100, loc: '八一好吃街', pid: '' },
+      { name: '库迪咖啡（重庆复星国际店）', cat: '餐饮', dist: 400, loc: '五一路95号复悦荟商场L2', pid: '' },
+      { name: '库迪咖啡（解放碑新世纪百货店）', cat: '餐饮', dist: 250, loc: '新世纪百货内', pid: '' },
+      { name: '八一路美食街', cat: '餐饮', dist: 120, loc: '八一路', pid: '' },
+      { name: '较场口夜市', cat: '餐饮', dist: 450, loc: '较场口', pid: '' },
+      { name: 'Mr.simple简单先生男士理发（解放碑店）', cat: '理发', dist: 350, loc: '较场口瑞富广场b1', pid: '' },
+      { name: '重百大楼', cat: '商场', dist: 200, loc: '解放碑商圈', pid: '' },
+      { name: '英利国际购物中心', cat: '商场', dist: 450, loc: '解放碑商圈', pid: '' },
+      { name: '大都会东方广场', cat: '商场', dist: 150, loc: '解放碑商圈', pid: '' },
+      { name: '金鹰财富购物中心', cat: '商场', dist: 300, loc: '解放碑商圈', pid: '' },
+      { name: '新世纪百货', cat: '商场', dist: 250, loc: '解放碑商圈', pid: '' },
+      { name: '王府井奥莱', cat: '商场', dist: 350, loc: '解放碑商圈', pid: '' },
+      { name: '得意世界', cat: '商场', dist: 380, loc: '较场口88号', pid: '' }
+    ]
+  };
+
+  /* ===== 远程数据加载（自动抓取）=====
+   * 部署到网上后，定时任务每天 0/12 点抓取高德数据写入同目录 data.json；
+   * 本应用启动时优先拉取远程 data.json 覆盖内置 AREAS，抓取失败/离线时回退内置数据。
+   */
+  function updateDataNote(updated) {
+    var el = document.getElementById('data-note');
+    if (!el) return;
+    var keys = Object.keys(AREAS);
+    var s = '列表按位置分组显示——';
+    for (var i = 0; i < keys.length; i++) {
+      s += '「' + keys[i] + '」' + AREAS[keys[i]].length + ' 家';
+      if (i < keys.length - 1) s += '、';
+    }
+    if (updated) s += '（远程自动更新：' + updated + '）';
+    s += '。位置框切换输入即切换列表。';
+    el.innerHTML = s;
+  }
+  function loadRemoteData() {
+    fetch('data.json?v=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(function (d) {
+        if (!d || !d.areas) return;
+        var n = 0;
+        for (var k in d.areas) {
+          if (Array.isArray(d.areas[k]) && d.areas[k].length) { AREAS[k] = d.areas[k]; n += d.areas[k].length; }
+        }
+        updateDataNote(d.updated);
+        render();
+      })
+      .catch(function () { /* 远程数据不可用（未部署/离线），使用内置 AREAS */ });
+  }
+
+  /* ===== 网上 / 视频查到（NETINFO）=====
+   * 网上、视频、政府公开资料里提到的该位置周边情报（高德未必收录）
+   */
+  var NETINFO = {
+    '重庆城市科技学院永川校区': [
+      { name: '128 美食街', loc: '校门口', note: '出校门即到的大型美食街，小吃、水果、炸鸡、奶茶、螺蛳粉齐全，水果比校内便宜；是城科学生主要消费街。', src: '抖音博主', url: 'https://www.iesdouyin.com/share/video/7670811708822978986' },
+      { name: '校内两条商业街', loc: '校内 7 栋 + 老商业街', note: '7栋商业街有数码文具、超市；老商业街有 1点点 等店；13栋公寓旁还有罗森、蜜雪冰城、健身房、超市。', src: '抖音博主', url: 'https://www.iesdouyin.com/share/video/7669464733376615603' },
+      { name: '校内瑞幸咖啡共 4 家', loc: '校内各处', note: '高德只收录了图书馆店 1 家；据学生视频，校内实际有 4 家瑞幸，找最近的即可。', src: '抖音博主', url: 'https://www.iesdouyin.com/share/video/7665545732733041572' },
+      { name: '后街美食街', loc: '校门口后街', note: '有学姐开的冒烤鸭等店，烤鸭、水果、炸鸡、奶茶、螺蛳粉都有。', src: '抖音博主', url: 'https://www.iesdouyin.com/share/video/7418122331333102848' },
+      { name: '政府规划「1278 青春街吧」商圈', loc: '城科+科创学院一带', note: '永川区政府以城科（128）+科创学院（127）为基础规划潮流社交街区，升级中船·华尚城特色街区，未来周边商圈会更全。', src: '永川区政府', url: 'https://www.cqyc.gov.cn/zwgk_204/zfxxgkmls/jytabl/rdjy/202505/t20250528_14665576.html' }
+    ]
+  };
+
+  /* ===== 购买指南知识库 =====
+   * 物品 → 大概率卖它的店型（高德未必收录，属于"大概可能"）
+   * kw: 命中关键词；stores: 店型清单（点击可搜当前位置周边此类店）；note: 补充提示
+   */
+  var GUIDE = [
+    { kw: ['吊坠绳子', '吊坠', '挂绳', '绳子', '手链绳'], stores: ['饰品店', '文具店', '两元店', '手工材料店'], note: '校门口超市的杂货区也常摆这类小商品，可以去翻翻。',
+      net: [
+        { name: '拼豆手工集合店', loc: '城科大学美食街', note: '手作/拼豆店，吊坠绳、DIY 材料是主营。但安居客显示正在转让，去之前先确认是否还开着。', src: '安居客', url: 'https://cq.sydc.anjuke.com/sp-zu/fengjiecq/?kw=%E6%B0%B8%E5%B7%9D%E5%95%86%E9%93%BA' },
+        { name: '7栋商业街数码文具店', loc: '校内 7 栋', note: '抖音博主实地介绍 7 栋有数码文具、超市，文具店一般有挂绳类小商品。', src: '抖音', url: 'https://www.iesdouyin.com/share/video/7669464733376615603' },
+        { name: '校内老商业街（1点点 03 铺旁）', loc: '校内老商业街', note: '1点点官方门店页确认老商业街 03 铺，周边还有其他小店，可顺路找。', src: '1点点官网', url: 'https://www.alittle-tea.com/en/storelocations/1/4/?page=3' },
+        { name: '网上直接买：吊坠绳', loc: '淘宝 / 1688 搜「吊坠绳」', note: '几块钱到十几块一根：72号玉线、蜡线、黑绳红绳都有，配金锁/翡翠/平安扣的齐全，还有带钩针引线的 DIY 材料包。实体店同款一般 10–30 元。下图是网上在售的实拍样式。', src: '淘宝 / 1688', url: 'https://mobile-phone.taobao.com/chanpin/e8e45066c29805ea8ff8467c323c0b4eb8b7b17dc35a5bcda96b4847e2effcf5.html',
+          img: ['https://aka.doubaocdn.com/s/5ISD6OfITN', 'https://aka.doubaocdn.com/s/2BcjUavzI0', 'https://aka.doubaocdn.com/s/uOyV7x9I4p'] }
+      ] },
+    { kw: ['感冒药', '药品', '药', '退烧', '发烧药'], stores: ['药店', '校医院', '诊所'], note: '高德搜「药店」能看到附近被收录的药房；校医院/医务室也能开常用药。' },
+    { kw: ['充电线', '数据线', '充电器', '充电宝'], stores: ['数码店', '手机维修店', '超市', '便利店'], note: '便利店货架一般也有数据线。' },
+    { kw: ['跳绳', '篮球', '羽毛球', '乒乓球', '体育用品'], stores: ['体育用品店', '文具店', '超市'], note: '' },
+    { kw: ['矿泉水', '饮料', '水', '可乐', '奶茶原料'], stores: ['超市', '便利店', '自动售货机'], note: '' },
+    { kw: ['纸巾', '抽纸', '湿巾', '卫生纸'], stores: ['超市', '便利店', '两元店'], note: '' },
+    { kw: ['笔记本', '笔', '文具', '胶带', '便利贴'], stores: ['文具店', '超市'], note: '校园文具店一般最全。' },
+    { kw: ['电池', '5号电池', '7号电池'], stores: ['超市', '便利店', '五金店', '两元店'], note: '' },
+    { kw: ['袜子', '内衣', '内裤', '拖鞋'], stores: ['超市', '内衣店', '两元店'], note: '' },
+    { kw: ['零食', '薯片', '辣条', '饼干'], stores: ['超市', '便利店', '零食店'], note: '' },
+    { kw: ['洗发水', '沐浴露', '牙膏', '洗衣液'], stores: ['超市', '便利店'], note: '' },
+    { kw: ['创可贴', '碘伏', '酒精', '纱布'], stores: ['药店', '校医院', '超市'], note: '' }
+  ];
+  function matchGuide(q) {
+    var s = (q || '').trim().toLowerCase();
+    if (!s) return null;
+    for (var i = 0; i < GUIDE.length; i++) {
+      for (var j = 0; j < GUIDE[i].kw.length; j++) {
+        if (s.indexOf(GUIDE[i].kw[j].toLowerCase()) !== -1) return GUIDE[i];
+      }
+    }
+    return null;
+  }
+
+  var CATS = ['全部', '超市便利店', '菜市场', '水果', '商场', '餐饮', '药店', '理发', '服务'];
+  var CAT_CLASS = {
+    '超市便利店': '',
+    '菜市场': 'cat-market',
+    '水果': 'cat-market',
+    '商场': 'cat-market',
+    '餐饮': 'cat-food',
+    '药店': 'cat-market',
+    '理发': '',
+    '服务': ''
+  };
+
+  /* ===== 辐射位置预设 =====
+   * 已抓取高德 placeId + 精确坐标的位置，可直接一步直达周边搜索
+   * 内置收录（AREAS 有数据）→ 应用内列表；全国热门地标（无内置数据）→ 一步直达高德周边结果
+   */
+  var PRESETS = [
+    { name: '重庆城市科技学院永川校区', pid: 'B00170I67P', lng: 105.889131, lat: 29.393910 },
+    { name: '西城佳园', pid: 'B0FFI2LE72', lng: 106.476027, lat: 29.432472 },
+    { name: '重庆来福士', pid: 'B0FFFQLXRT', lng: 106.587247, lat: 29.564813 },
+    { name: '重庆洪崖洞', pid: 'B0FFG8V7SH', lng: 106.579027, lat: 29.562204 },
+    { name: '重庆解放碑', pid: 'B0FFG33I2E', lng: 106.575329, lat: 29.557253 },
+    { name: '重庆磁器口', pid: 'B00170IFE4', lng: 106.449705, lat: 29.581184 },
+    { name: '重庆观音桥', pid: 'B0FFHOSTJ8', lng: 106.533919, lat: 29.576104 },
+    { name: '北京天安门', pid: 'B000A60DA1', lng: 116.397463, lat: 39.909187 },
+    { name: '北京故宫', pid: 'B000A8UIN8', lng: 116.397029, lat: 39.917839 },
+    { name: '上海外滩', pid: 'B00155FXB3', lng: 121.492127, lat: 31.233516 },
+    { name: '成都春熙路', pid: 'B001C8RQLM', lng: 104.077774, lat: 30.655544 },
+    { name: '广州塔', pid: 'B00140WBI1', lng: 113.324521, lat: 23.106428 }
+  ];
+  /* 全国热门地标（无内置列表数据，搜周边时一步直达高德周边结果页） */
+  var HOT_SPOTS = [
+    '重庆洪崖洞', '重庆解放碑', '重庆磁器口', '重庆观音桥',
+    '北京天安门', '北京故宫', '上海外滩', '成都春熙路', '广州塔'
+  ];
+  var DEFAULT_CENTER = PRESETS[0].name;
+
+  var state = { q: '', cat: '全部' };
+  var listFolded = false; /* 结果列表是否被收缩 */
+  var els = {
+    eyebrowPlace: document.getElementById('eyebrow-place'),
+    input: document.getElementById('q'),
+    clear: document.getElementById('clear'),
+    voice: document.getElementById('voice'),
+    voiceC: document.getElementById('voice-c'),
+    netinfo: document.getElementById('netinfo'),
+    histQ: document.getElementById('hist-q'),
+    histCenter: document.getElementById('hist-center'),
+    chips: document.getElementById('chips'),
+    csLeft: document.getElementById('cs-left'),
+    csRight: document.getElementById('cs-right'),
+    count: document.getElementById('count'),
+    fold: document.getElementById('fold-btn'),
+    list: document.getElementById('list'),
+    empty: document.getElementById('empty'),
+    box: document.getElementById('searchbox'),
+    center: document.getElementById('center'),
+    go: document.getElementById('go'),
+    presets: document.getElementById('presets'),
+    pop: document.getElementById('presets-pop'),
+    tip: document.getElementById('tip'),
+    guide: document.getElementById('guide')
+  };
+  var debounceTimer = null;
+
+  /* ===== 工具 ===== */
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function highlight(text, q) {
+    var t = esc(text);
+    var query = (q || '').trim();
+    if (!query) return t;
+    var escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return t.replace(new RegExp('(' + escaped + ')', 'gi'), '<mark>$1</mark>');
+  }
+  function walk(dist, loc) {
+    if (dist === null) return (loc === '校门口周边') ? '校门口周边' : '校内';
+    if (dist < 100) return '不足100米';
+    var min = Math.max(1, Math.round(dist / 80));
+    return dist + '米 · 步行约' + min + '分钟';
+  }
+  function iconFor(cat) {
+    if (cat === '药店') {
+      return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="4"></rect><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>';
+    }
+    if (cat === '理发') {
+      return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 7a3 3 0 1 0-3 3"></path><path d="M12 13l8 8"></path><path d="M4 20l8-8"></path><path d="M9 10l7 7"></path><path d="M9 4V2"></path><path d="M6 6l-1-1"></path></svg>';
+    }
+    if (cat === '商场') {
+      return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 21h18"></path><path d="M5 21V5l7-3 7 3v16"></path><path d="M9 9h6"></path><path d="M9 13h6"></path><path d="M9 17h6"></path></svg>';
+    }
+    if (cat === '菜市场') {
+      return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9h16l-1 11H5L4 9z"></path><path d="M8 9c0-2 2-4 4-4s4 2 4 4"></path><path d="M9 14h6"></path></svg>';
+    }
+    if (cat === '水果') {
+      return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8c-3.5 0-6 2.5-6 6s3 6 6 6 6-2.5 6-6-2.5-6-6-6z"></path><path d="M12 8c0-2 1-3.5 3-4"></path><path d="M9.5 5.5c1.5-.5 3-.5 5 0"></path></svg>';
+    }
+    if (cat === '餐饮') {
+      return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 3v7a3 3 0 0 0 6 0V3"></path><path d="M8 3v18"></path><path d="M16 3c-2 1.5-3 3.5-3 6 0 2.5 1.5 4 3 4v8"></path></svg>';
+    }
+    if (cat === '服务') {
+      return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12h4l2-7 4 14 2-7h4"></path></svg>';
+    }
+    return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h10"></path></svg>';
+  }
+
+  function amapUrl(p) {
+    if (p.pid) return 'https://www.amap.com/ssr/search/poi_detail?id=' + p.pid;
+    var query = encodeURIComponent(p.name + ' ' + p.loc);
+    return 'https://www.amap.com/ssr/search?query=' + query + '&city=500000';
+  }
+
+  /* ===== 辐射位置 ===== */
+  function matchPreset(name) {
+    var n = (name || '').trim();
+    if (!n) return PRESETS[0];
+    for (var i = 0; i < PRESETS.length; i++) {
+      if (n === PRESETS[i].name || PRESETS[i].name.indexOf(n) !== -1 || n.indexOf(PRESETS[i].name) !== -1) return PRESETS[i];
+    }
+    return null;
+  }
+  function aroundUrl(preset, kw) {
+    return 'https://www.amap.com/ssr/search?from=place&name=' + encodeURIComponent(preset.name) +
+      '&_src=around&query_type=RQBXY&city=&id=' + preset.pid +
+      '&longitude=' + preset.lng + '&latitude=' + preset.lat +
+      '&range=1000&query=' + encodeURIComponent(kw || '');
+  }
+  /* 位置按城市归组：城市按钮横排带数量，点一个下方只下来一格显示该城市位置，点另一个旧的自动回去 */
+  var POSITION_TIERS = {
+    '北京天安门': 0, '北京故宫': 0, '上海外滩': 0, '成都春熙路': 0, '广州塔': 0,
+    '重庆来福士': 1, '重庆解放碑': 1, '重庆洪崖洞': 1, '重庆磁器口': 1, '重庆观音桥': 1,
+    '重庆城市科技学院永川校区': 2,
+    '西城佳园': 3
+  };
+  function cityOf(name) {
+    if (name === '西城佳园' || /重庆/.test(name)) return '重庆';
+    var m = /^(北京|上海|成都|广州)/.exec(name);
+    return m ? m[1] : '其他';
+  }
+  function sortPositions(list) {
+    return list.slice().sort(function (a, b) {
+      var ta = POSITION_TIERS[a] !== undefined ? POSITION_TIERS[a] : 3;
+      var tb = POSITION_TIERS[b] !== undefined ? POSITION_TIERS[b] : 3;
+      if (ta !== tb) return ta - tb;
+      return a.localeCompare(b, 'zh-CN');
+    });
+  }
+  function positionBtnHtml(pr, cur) {
+    var active = (cur === pr);
+    var isHot = HOT_SPOTS.indexOf(pr) !== -1;
+    return '<button class="preset' + (active ? ' active' : '') + '"' +
+      (isHot ? ' data-hot="' + pr + '"' : ' data-preset="' + pr + '"') + '>' + pr + '</button>';
+  }
+  function renderPresets() {
+    var cur = (els.center.value || '').trim();
+    var all = Object.keys(AREAS).concat(HOT_SPOTS);
+    var groups = {};
+    all.forEach(function (n) {
+      var c = cityOf(n);
+      (groups[c] = groups[c] || []).push(n);
+    });
+    var cities = Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, 'zh-CN'); });
+    var html = '<span class="preset" style="cursor:default;border-style:dashed;">可输入任意位置（热门地标直达高德周边）</span>';
+    html += cities.map(function (c) {
+      return '<button class="preset city-btn" data-city="' + c + '" type="button">' + c +
+        '<span class="c-count">' + groups[c].length + '</span></button>';
+    }).join('');
+    els.presets.innerHTML = html;
+  }
+  var SUB_NAMES = { 0: '城市地标', 1: '主城地标', 2: '学校', 3: '小区' };
+  var openCityName = '';
+  function openCity(c, btn) {
+    openCityName = c;
+    var groups = {};
+    Object.keys(AREAS).concat(HOT_SPOTS).forEach(function (n) {
+      var c2 = cityOf(n);
+      (groups[c2] = groups[c2] || []).push(n);
+    });
+    var list = sortPositions(groups[c] || []);
+    var subs = {};
+    list.forEach(function (pr) {
+      var t = POSITION_TIERS[pr] !== undefined ? POSITION_TIERS[pr] : 3;
+      var sn = SUB_NAMES[t] || '其他';
+      (subs[sn] = subs[sn] || []).push(pr);
+    });
+    var subKeys = Object.keys(subs).sort(function (a, b) { return a.localeCompare(b, 'zh-CN'); });
+    var html;
+    if (subKeys.length > 1) {
+      html = '<div class="pop-sub">' + subKeys.map(function (sn) {
+        return '<button class="sub-btn" data-sub="' + sn + '" type="button">' + sn +
+          '<span class="c-count">' + subs[sn].length + '</span></button>';
+      }).join('') + '</div><div class="pop-pos"></div>';
+    } else {
+      html = '<div class="pop-sub" style="display:none;"></div><div class="pop-pos">' +
+        list.map(function (pr) { return positionBtnHtml(pr, (els.center.value || '').trim()); }).join('') + '</div>';
+    }
+    els.pop.innerHTML = html;
+    els.pop.classList.add('open');
+    if (subKeys.length > 1) renderSub(subKeys[0]);
+    var all = els.presets.querySelectorAll('.city-btn');
+    for (var i = 0; i < all.length; i++) all[i].classList.remove('active');
+    btn.classList.add('active');
+  }
+  function renderSub(sn) {
+    var groups = {};
+    Object.keys(AREAS).concat(HOT_SPOTS).forEach(function (n) {
+      var c2 = cityOf(n);
+      (groups[c2] = groups[c2] || []).push(n);
+    });
+    var list = sortPositions((groups[openCityName] || []).filter(function (pr) {
+      var t = POSITION_TIERS[pr] !== undefined ? POSITION_TIERS[pr] : 3;
+      return (SUB_NAMES[t] || '其他') === sn;
+    }));
+    var cur = (els.center.value || '').trim();
+    els.pop.querySelector('.pop-pos').innerHTML = list.map(function (pr) { return positionBtnHtml(pr, cur); }).join('');
+    var sbs = els.pop.querySelectorAll('.sub-btn');
+    for (var i = 0; i < sbs.length; i++) {
+      sbs[i].classList.toggle('active', sbs[i].getAttribute('data-sub') === sn);
+    }
+  }
+  function closeCity(btn) {
+    els.pop.classList.remove('open');
+    els.pop.innerHTML = '';
+    openCityName = '';
+    if (btn) btn.classList.remove('active');
+  }
+  function runAround() {
+    var kw = els.input.value.trim();
+    var centerName = (els.center.value || '').trim() || DEFAULT_CENTER;
+    pushHist(HIST_C, centerName);
+    if (kw) pushHist(HIST_Q, kw);
+    var preset = matchPreset(centerName);
+    var hasArea = !!AREAS[centerName];
+    els.tip.style.display = 'none';
+    if (!kw) {
+      if (hasArea) {
+        els.tip.innerHTML = '下方就是 <b>' + esc(centerName) + '</b> 周边 1000 米已收录的 ' + currentPois().length + ' 家店（位置切换自动换列表）。想找具体东西？在搜索框输入物品（如：感冒药、充电线、跳绳）再点「搜周边」。';
+        els.tip.style.display = '';
+        renderPresets();
+        render();
+        return;
+      }
+      els.tip.innerHTML = '请在搜索框输入<b>要买的东西</b>（如：感冒药、充电线、矿泉水），再点「搜周边」。';
+      els.tip.style.display = '';
+      renderPresets();
+      return;
+    }
+    if (hasArea) {
+      state.q = kw;
+      els.input.value = kw;
+      els.tip.innerHTML = '已在应用内列出「<b>' + esc(centerName) + '</b>」周边匹配「' + esc(kw) + '」的店（内置收录 ' + currentPois().length + ' 家）。' +
+        (preset ? '<br>想要更全的实时结果，可<a href="' + aroundUrl(preset, kw) + '" target="_blank" rel="noopener">打开高德实时列表</a>。' : '');
+      els.tip.style.display = '';
+      renderPresets();
+      render();
+      return;
+    }
+    if (preset) {
+      window.open(aroundUrl(preset, kw), '_blank', 'noopener');
+    } else {
+      window.open('https://www.amap.com/ssr/search?query=' + encodeURIComponent(centerName) + '&city=500000', '_blank', 'noopener');
+      els.tip.innerHTML = '已打开高德搜索「<b>' + esc(centerName) + '</b>」：点开目标地点 → 点【周边】→ 输入「' + esc(kw) + '」，即可看该位置 1000 米内的结果。<br>也可以把常用位置告诉我，我帮你抓一次存进应用，以后点「搜周边」直接出列表。';
+      els.tip.style.display = '';
+    }
+    renderPresets();
+    render();
+  }
+
+  /* ===== 渲染 ===== */
+  function renderChips() {
+    els.chips.innerHTML = CATS.map(function (c) {
+      return '<button class="chip' + (state.cat === c ? ' active' : '') + '" data-cat="' + c + '">' + c + '</button>';
+    }).join('');
+    if (typeof updateCsBtns === 'function') updateCsBtns();
+  }
+
+  /* ===== 位置驱动 ===== */
+  function currentPois() {
+    var n = (els.center.value || '').trim();
+    if (!n) return AREAS[DEFAULT_CENTER];
+    return AREAS[n] || [];
+  }
+
+  /* ===== 智能搜索同义词：搜词命中店名里的别名 ===== */
+  var Q_ALIAS = {
+    '奶茶': '奶茶 饮品 烧仙草 茶百道 古茗 蜜雪 益禾堂 点点',
+    '咖啡': '咖啡 瑞幸 幸运咖',
+    '理发': '理发 造型 沙龙 美发 烫染 美业 剪发',
+    '剪发': '理发 造型 沙龙 美发 烫染 美业',
+    '快递': '快递 驿站 速运 邮政 京东校园',
+    '充电': '充电 充电桩',
+    '充电桩': '充电 充电桩',
+    '感冒药': '感冒药 药房 药店 药品',
+    '买药': '药房 药店 药品',
+    '汉堡': '汉堡 炸鸡 塔斯汀 肯德基 快餐',
+    '炸鸡': '炸鸡 汉堡 鸡腿 快餐',
+    '停车': '停车 停车场',
+    '健身': '健身 锻炼',
+    '五金': '五金 螺丝',
+    '火锅': '火锅 冒菜 鸡公煲 煲',
+    '超市': '超市 便利店 生鲜 商场',
+    '菜市场': '菜市场 农贸 生鲜'
+  };
+  function aliasHit(text, q) {
+    var alias = Q_ALIAS[q];
+    if (!alias) return false;
+    var words = alias.split(' ');
+    for (var i = 0; i < words.length; i++) {
+      if (words[i] && text.indexOf(words[i]) !== -1) return true;
+    }
+    return false;
+  }
+
+  function filter() {
+    var q = state.q.trim().toLowerCase();
+    var cat = state.cat;
+    return currentPois().filter(function (p) {
+      var hitCat = (cat === '全部') || (p.cat === cat);
+      var text = (p.name + ' ' + p.cat + ' ' + (p.loc || '')).toLowerCase();
+      var hitQ = !q || text.indexOf(q) !== -1 || aliasHit(text, q);
+      return hitCat && hitQ;
+    }).sort(function (a, b) {
+      if (a.dist === null && b.dist === null) return 0;
+      if (a.dist === null) return 1;
+      if (b.dist === null) return -1;
+      return a.dist - b.dist;
+    });
+  }
+
+  function render() {
+    var items = filter();
+    var total = currentPois().length;
+    var centerName = (els.center.value || '').trim() || DEFAULT_CENTER;
+    var hasArea = !!AREAS[centerName];
+    els.eyebrowPlace.textContent = centerName;
+    els.count.innerHTML = '共 <b>' + items.length + '</b> 家结果 / 全部 ' + total + ' 家';
+    els.box.classList.toggle('has-text', state.q.trim().length > 0);
+
+    /* 购买指南：输入命中知识库 → 显示"大概可能买到的地方" + 网上查到 */
+    var g = matchGuide(state.q);
+    if (g) {
+      els.guide.style.display = '';
+      var netHtml = '';
+      if (g.net && g.net.length) {
+        netHtml = '<div class="g-net-title">网上 / 视频查到</div>' +
+          g.net.map(function (n) {
+            return '<div class="g-net">' +
+              '<div class="g-net-name">' + esc(n.name) + '<span class="g-net-loc">' + esc(n.loc) + '</span></div>' +
+              '<div class="g-net-note">' + esc(n.note) + '</div>' +
+              (n.img && n.img.length ? '<div class="g-net-imgs">' + n.img.map(function (u) {
+                return '<img class="g-net-img" src="' + esc(u) + '" loading="lazy" alt="">';
+              }).join('') + '</div>' : '') +
+              '<div class="g-net-src"><a href="' + esc(n.url) + '" target="_blank" rel="noopener">来源：' + esc(n.src) + '</a></div>' +
+            '</div>';
+          }).join('');
+      }
+      els.guide.innerHTML =
+        '<div class="g-title">「' + esc(state.q.trim()) + '」大概可能买到的地方<span class="g-tag">大概</span></div>' +
+        '<div class="g-stores">' + g.stores.map(function (s) {
+          return '<button class="g-store" data-store="' + esc(s) + '">' + esc(s) + '</button>';
+        }).join('') + '</div>' +
+        (g.note ? '<div class="g-note">' + esc(g.note) + '</div>' : '') +
+        netHtml;
+    } else {
+      els.guide.style.display = 'none';
+    }
+
+    /* 网上 / 视频情报：只在未搜索时显示（搜索具体东西时隐藏） */
+    var ni = NETINFO[centerName];
+    if (ni && ni.length && !state.q.trim()) {
+      els.netinfo.style.display = '';
+      els.netinfo.innerHTML =
+        '<div class="ni-title"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><path d="M12 7v5"></path><path d="M12 16h.01"></path></svg>网上 / 视频查到 · ' + esc(centerName) + '</div>' +
+        ni.map(function (n) {
+          return '<div class="ni-item">' +
+            '<div class="ni-name">' + esc(n.name) + '<span class="ni-loc">' + esc(n.loc) + '</span></div>' +
+            '<div class="ni-note">' + esc(n.note) + '</div>' +
+            '<div class="ni-src"><a href="' + esc(n.url) + '" target="_blank" rel="noopener">来源：' + esc(n.src) + '</a></div>' +
+          '</div>';
+        }).join('');
+    } else {
+      els.netinfo.style.display = 'none';
+    }
+
+    if (items.length === 0) {
+      els.list.innerHTML = '';
+      els.empty.style.display = '';
+      if (!hasArea) {
+        els.empty.innerHTML =
+          '<div class="ring"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h10"></path></svg></div>' +
+          '<h3>「' + esc(centerName) + '」的周边数据还没收录</h3>' +
+          '<p>把常用位置告诉我，我帮你抓一次周边列表存进来；也可以点「搜周边」直接用高德实时搜。</p>';
+        return;
+      }
+      els.empty.innerHTML =
+        '<div class="ring"><svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg></div>' +
+        '<h3>1000 米内没找到「' + esc(state.q.trim()) + '」</h3>' +
+        '<p>换个关键词试试，或者看看分类里有没有你需要的。</p>' +
+        '<div class="try">可试试：超市 · 菜市场 · 水果 · 咖啡 · 罗森 · 奶茶</div>';
+      return;
+    }
+
+    els.empty.style.display = 'none';
+    els.list.innerHTML = items.map(function (p) {
+      var q = state.q.trim();
+      var distText = walk(p.dist, p.loc);
+      var badgeCls = p.dist === null ? 'gray' : (p.cat === '菜市场' || p.cat === '水果' ? 'orange' : '');
+      return (
+        '<a class="item ' + (CAT_CLASS[p.cat] || '') + '" href="' + amapUrl(p) + '" target="_blank" rel="noopener" aria-label="在高德打开 ' + esc(p.name) + ' 的详情并导航">' +
+          '<div class="icon">' + iconFor(p.cat) + '</div>' +
+          '<div class="body">' +
+            '<div class="name">' + highlight(p.name, q) + '</div>' +
+            '<div class="loc">' + esc(p.loc || '') + '</div>' +
+            '<div class="badges">' +
+              '<span class="badge">' + p.cat + '</span>' +
+              '<span class="badge ' + badgeCls + '">' + distText + '</span>' +
+            '</div>' +
+          '</div>' +
+          '<div class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>去高德</div>' +
+        '</a>'
+      );
+    }).join('');
+    if (listFolded) {
+      els.list.style.display = 'none';
+      els.empty.style.display = 'none';
+    }
+  }
+
+  /* ===== 事件 ===== */
+  els.input.addEventListener('input', function () {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(function () {
+      state.q = els.input.value;
+      render();
+    }, 120);
+  });
+  els.input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      clearTimeout(debounceTimer);
+      state.q = els.input.value;
+      pushHist(HIST_Q, state.q);
+      render();
+    }
+  });
+  els.clear.addEventListener('click', function () {
+    els.input.value = '';
+    state.q = '';
+    render();
+    els.input.focus();
+  });
+  els.chips.addEventListener('click', function (e) {
+    var chip = e.target.closest('.chip');
+    if (!chip) return;
+    state.cat = chip.getAttribute('data-cat');
+    renderChips();
+    render();
+  });
+  /* 分类栏/位置栏按住拖动滑动（鼠标拖拽；手机触摸走原生滑动） */
+  function initDragScroll(box) {
+    var dragging = false, moved = false, startX = 0, startLeft = 0;
+    box.addEventListener('pointerdown', function (e) {
+      if (e.pointerType !== 'mouse') return;
+      dragging = true; moved = false;
+      startX = e.clientX; startLeft = box.scrollLeft;
+      box.classList.add('dragging');
+    });
+    window.addEventListener('pointermove', function (e) {
+      if (!dragging || e.pointerType !== 'mouse') return;
+      var dx = e.clientX - startX;
+      if (Math.abs(dx) > 4) moved = true;
+      box.scrollLeft = startLeft - dx;
+      if (box === els.chips) updateCsBtns();
+    });
+    window.addEventListener('pointerup', function () {
+      if (!dragging) return;
+      dragging = false;
+      box.classList.remove('dragging');
+    });
+    /* 拖动过的操作不触发选中 */
+    box.addEventListener('click', function (e) {
+      if (moved) { e.preventDefault(); e.stopPropagation(); moved = false; }
+    }, true);
+  }
+  initDragScroll(els.chips);
+  initDragScroll(els.presets);
+  initDragScroll(els.pop);
+  /* 分类栏左右滑动 */
+  function updateCsBtns() {
+    var max = els.chips.scrollWidth - els.chips.clientWidth;
+    els.csLeft.disabled = els.chips.scrollLeft <= 2;
+    els.csRight.disabled = els.chips.scrollLeft >= max - 2;
+  }
+  els.csLeft.addEventListener('click', function () {
+    els.chips.scrollLeft -= 180;
+    updateCsBtns();
+  });
+  els.csRight.addEventListener('click', function () {
+    els.chips.scrollLeft += 180;
+    updateCsBtns();
+  });
+  els.chips.addEventListener('scroll', updateCsBtns, { passive: true });
+  window.addEventListener('resize', updateCsBtns);
+  updateCsBtns();
+  els.go.addEventListener('click', runAround);
+  els.center.addEventListener('input', function () {
+    state.cat = '全部';
+    renderChips();
+    renderPresets();
+    render();
+  });
+  els.center.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') runAround();
+  });
+  els.presets.addEventListener('click', function (e) {
+    var cb = e.target.closest('.city-btn');
+    if (cb) {
+      if (cb.classList.contains('active')) closeCity(cb);
+      else openCity(cb.getAttribute('data-city'), cb);
+      return;
+    }
+    var btn = e.target.closest('.preset[data-preset]');
+    var hot = e.target.closest('.preset[data-hot]');
+    if (hot) {
+      els.center.value = hot.getAttribute('data-hot');
+      pushHist(HIST_C, els.center.value);
+      state.cat = '全部';
+      renderChips();
+      renderPresets();
+      render();
+      return;
+    }
+    if (!btn) return;
+    els.center.value = btn.getAttribute('data-preset');
+    pushHist(HIST_C, els.center.value);
+    state.cat = '全部';
+    renderChips();
+    renderPresets();
+    render();
+  });
+  els.pop.addEventListener('click', function (e) {
+    var sb = e.target.closest('.sub-btn');
+    if (sb) {
+      renderSub(sb.getAttribute('data-sub'));
+      return;
+    }
+    var btn = e.target.closest('.preset[data-preset]');
+    var hot = e.target.closest('.preset[data-hot]');
+    var picked = null;
+    if (hot) picked = hot.getAttribute('data-hot');
+    else if (btn) picked = btn.getAttribute('data-preset');
+    if (!picked) return;
+    els.center.value = picked;
+    pushHist(HIST_C, picked);
+    state.cat = '全部';
+    renderChips();
+    renderPresets();
+    render();
+    var bs = els.pop.querySelectorAll('.preset');
+    for (var i = 0; i < bs.length; i++) bs[i].classList.remove('active');
+    var now = els.pop.querySelector('.preset[data-preset="' + picked + '"], .preset[data-hot="' + picked + '"]');
+    if (now) now.classList.add('active');
+  });
+  /* 结果列表收缩/展开 */
+  els.fold.addEventListener('click', function () {
+    listFolded = !listFolded;
+    var arrow = els.fold.querySelector('.fold-arrow');
+    if (listFolded) {
+      els.list.style.display = 'none';
+      els.empty.style.display = 'none';
+      arrow.setAttribute('d', 'M6 15l6-6 6 6'); /* 朝上=已收起，点击展开 */
+    } else {
+      els.list.style.display = '';
+      render();
+      arrow.setAttribute('d', 'M6 9l6 6 6-6'); /* 朝下=已展开，点击收起 */
+    }
+  });
+  els.guide.addEventListener('click', function (e) {
+    var btn = e.target.closest('.g-store');
+    if (!btn) return;
+    var store = btn.getAttribute('data-store');
+    var centerName = (els.center.value || '').trim() || DEFAULT_CENTER;
+    var preset = matchPreset(centerName);
+    if (preset) {
+      window.open(aroundUrl(preset, store), '_blank', 'noopener');
+    } else {
+      window.open('https://www.amap.com/ssr/search?query=' + encodeURIComponent(centerName) + '&city=500000', '_blank', 'noopener');
+    }
+  });
+
+  /* ===== 语音输入（搜索框 + 位置框）===== */
+  var recognition = null;
+  var voiceTarget = 'q';      // 'q' = 搜索框，'center' = 位置框
+  var voiceListening = false;
+  function setVoiceUI(on) {
+    els.voice.classList.toggle('recording', on && voiceTarget === 'q');
+    els.voiceC.classList.toggle('recording', on && voiceTarget === 'center');
+  }
+  function voiceTip(html) {
+    els.tip.innerHTML = html;
+    els.tip.style.display = '';
+  }
+  (function initVoice() {
+    var SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SR) {
+      els.voice.classList.add('disabled');
+      els.voiceC.classList.add('disabled');
+      els.voice.title = '当前浏览器不支持语音输入';
+      els.voiceC.title = '当前浏览器不支持语音输入';
+      return;
+    }
+    recognition = new SR();
+    recognition.lang = 'zh-CN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    recognition.onresult = function (e) {
+      var text = (e.results && e.results[0] && e.results[0][0] && e.results[0][0].transcript || '').trim();
+      if (!text) return;
+      if (voiceTarget === 'center') {
+        els.center.value = text;
+        pushHist(HIST_C, text);
+        state.cat = '全部';
+        renderChips();
+        renderPresets();
+        render();
+      } else {
+        els.input.value = text;
+        state.q = text;
+        pushHist(HIST_Q, text);
+        render();
+      }
+    };
+    recognition.onerror = function (e) {
+      if (e.error === 'not-allowed' || e.error === 'service-not-allowed') {
+        voiceTip('麦克风权限不可用。请确认：① 用 <b>http://localhost:8617</b> 方式打开本页（file:// 方式浏览器不弹授权框）；② 点击浏览器地址栏左侧的<b>麦克风图标</b>，选择「允许」；③ 电脑要有可用麦克风。授权后重新点麦克风按钮。');
+      } else if (e.error === 'network') {
+        voiceTip('语音识别服务连接失败（当前网络环境不支持），请手动输入关键词。');
+      } else if (e.error === 'no-speech') {
+        voiceTip('没听到声音，请靠近麦克风再说一次。');
+      } else if (e.error !== 'aborted') {
+        voiceTip('语音没听清，再试一次（' + esc(e.error || '') + '）。');
+      }
+    };
+    recognition.onend = function () {
+      voiceListening = false;
+      setVoiceUI(false);
+      els.input.placeholder = '要买什么？如：感冒药、充电线、跳绳、矿泉水';
+      els.center.placeholder = '输入重庆市任意位置，如：重庆来福士';
+    };
+    recognition.onstart = function () {
+      setVoiceUI(true);
+    };
+  })();
+  function bindVoice(btn, target) {
+    btn.addEventListener('click', function () {
+      if (!recognition) return;
+      if (voiceListening) {
+        voiceListening = false;
+        try { recognition.stop(); } catch (err) {}
+        setVoiceUI(false);
+        return;
+      }
+      voiceTarget = target;
+      voiceListening = true;
+      if (target === 'center') {
+        els.center.placeholder = '正在听…说出位置';
+      } else {
+        els.input.placeholder = '正在听…说你要买的东西';
+      }
+      try { recognition.start(); } catch (err) {
+        voiceListening = false;
+        setVoiceUI(false);
+      }
+    });
+  }
+  bindVoice(els.voice, 'q');
+  bindVoice(els.voiceC, 'center');
+
+  /* ===== 搜索历史 ===== */
+  var HIST_Q = 'ls_hist_q';
+  var HIST_C = 'ls_hist_center';
+  function loadHist(key) {
+    try { return JSON.parse(localStorage.getItem(key) || '[]'); } catch (e) { return []; }
+  }
+  function saveHist(key, arr) {
+    try { localStorage.setItem(key, JSON.stringify(arr.slice(0, 20))); } catch (e) {}
+  }
+  function pushHist(key, val) {
+    val = (val || '').trim();
+    if (!val) return;
+    var a = loadHist(key);
+    a = a.filter(function (x) { return x.toLowerCase() !== val.toLowerCase(); });
+    a.unshift(val);
+    saveHist(key, a);
+  }
+  function renderHist(key, panel) {
+    var a = loadHist(key);
+    if (!a.length) {
+      panel.innerHTML = '<div class="hist-empty">暂无搜索历史</div>';
+      return;
+    }
+    panel.innerHTML =
+      '<div class="hist-head"><b>搜索历史</b><button class="hist-clear" data-clear="1">清空</button></div>' +
+      a.map(function (h, idx) {
+        return '<div class="hist-item" data-h="' + idx + '">' +
+          '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"></path><path d="M3 3v5h5"></path><path d="M12 7v5l3 2"></path></svg>' +
+          esc(h) +
+          '<button class="hi-del" data-del="' + idx + '" aria-label="删除">✕</button>' +
+        '</div>';
+      }).join('');
+  }
+  function showHist(key, panel, input, onPick) {
+    renderHist(key, panel);
+    panel.style.display = '';
+    var firstItem = panel.querySelector('.hist-item');
+    panel.onclick = function (e) {
+      var del = e.target.closest('.hi-del');
+      var clear = e.target.closest('.hist-clear');
+      if (del) {
+        var arr = loadHist(key);
+        arr.splice(Number(del.getAttribute('data-del')), 1);
+        saveHist(key, arr);
+        renderHist(key, panel);
+        e.stopPropagation();
+        return;
+      }
+      if (clear) {
+        saveHist(key, []);
+        renderHist(key, panel);
+        e.stopPropagation();
+        return;
+      }
+      var item = e.target.closest('.hist-item');
+      if (item) {
+        var val = loadHist(key)[Number(item.getAttribute('data-h'))];
+        onPick(val);
+        panel.style.display = 'none';
+      }
+    };
+  }
+  function hideHist() {
+    els.histQ.style.display = 'none';
+    els.histCenter.style.display = 'none';
+  }
+  document.addEventListener('click', function (e) {
+    if (!e.target.closest('#searchbox') && !e.target.closest('.region-form')) {
+      hideHist();
+    }
+  });
+  els.input.addEventListener('focus', function () {
+    showHist(HIST_Q, els.histQ, els.input, function (val) {
+      els.input.value = val;
+      state.q = val;
+      pushHist(HIST_Q, val);
+      render();
+    });
+  });
+  els.center.addEventListener('focus', function () {
+    showHist(HIST_C, els.histCenter, els.center, function (val) {
+      els.center.value = val;
+      pushHist(HIST_C, val);
+      state.cat = '全部';
+      renderChips();
+      renderPresets();
+      render();
+    });
+  });
+
+  /* ===== 启动 ===== */
+  if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+    navigator.serviceWorker.register('./sw.js').catch(function () {});
+  }
+  renderChips();
+  renderPresets();
+  render();
+  loadRemoteData();
+})();
+</script>
+</body>
+</html>

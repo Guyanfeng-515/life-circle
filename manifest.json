@@ -1,0 +1,15 @@
+{
+  "name": "生活圈 · 周边搜索",
+  "short_name": "生活圈",
+  "description": "输入位置和想买的东西，列出该位置 1000 米内能买到的地方，点击导航过去",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#F5F6F3",
+  "theme_color": "#2E7D6E",
+  "icons": [
+    { "src": "./icons/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
