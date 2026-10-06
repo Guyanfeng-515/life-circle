@@ -261,6 +261,40 @@
     .hero h1 { font-size: 21px; }
     .item { padding: 12px; }
   }
+
+  /* ===== 应用内嵌高德弹层 ===== */
+  .modal-mask {
+    position: fixed; inset: 0; z-index: 999;
+    background: rgba(15, 23, 30, 0.6);
+    display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.18s ease;
+  }
+  .modal-mask.open { opacity: 1; pointer-events: auto; }
+  .modal-box {
+    background: #fff; border-radius: 14px; overflow: hidden;
+    width: min(760px, 96vw); height: min(88vh, 760px);
+    display: flex; flex-direction: column;
+    box-shadow: 0 18px 50px rgba(0,0,0,0.28);
+  }
+  .modal-head {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 14px; border-bottom: 1px solid var(--line);
+    font-size: 13px; color: var(--ink-2); background: #FAFBFB;
+  }
+  .modal-head b { color: var(--ink); font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .modal-head button {
+    border: 1px solid var(--line); background: #fff; color: var(--ink-2);
+    border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer;
+    flex-shrink: 0;
+  }
+  .modal-head button:active { transform: scale(0.97); }
+  .modal-box iframe { flex: 1; width: 100%; border: 0; background: #fff; }
+  .modal-loading {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 13px; color: #9AA6AF; background: #fff;
+  }
+  .modal-box { position: relative; }
+  .modal-loading.hide { display: none; }
 </style>
 </head>
 <body>
@@ -333,10 +367,23 @@
   <!-- ===== 视图：页脚 ===== -->
   <div class="foot">
     <b>数据说明：</b><span id="data-note">列表按位置分组显示——「重庆城市科技学院永川校区」79 家、「西城佳园」26 家、「重庆来福士」62 家、「重庆洪崖洞」18 家、「重庆解放碑」22 家（城科/西城/来福士为高德抓取，洪崖洞/解放碑为网上公开信息整理，均为 1000 米内；距离为估算，步行按约 80 米/分钟）。位置框切换输入即切换列表。</span><br>
-    <b>搜周边：</b>位置已收录时，点「搜周边」直接在应用内列出该位置周边结果（不再跳高德）；需要更全的实时列表，点提示里的「打开高德实时列表」。位置未收录时，跳高德实时搜索，并把位置告诉我，我抓一次存进来。<br>
-    <b>使用提示：</b>点击任意结果卡片，直接打开高德上这家店的详情页，可查看位置、路线并一键导航；搜索框输入要买的东西，会给出"大概可能买到的地方"；列表下方是网上/视频查到的周边情报。<br>
+    <b>搜周边：</b>位置已收录时，点「搜周边」直接在应用内列出该位置周边结果；未收录时，自动在应用内打开高德实时结果，并把位置加入自动抓取队列（下次 0/12 点抓取自动收录）。<br>
+    <b>使用提示：</b>点击任意结果卡片，会在应用内弹出高德详情（不再跳新页面），可查看位置、路线并一键导航，也可点「外部打开」跳到浏览器；搜索框输入要买的东西，会给出"大概可能买到的地方"；列表下方是网上/视频查到的周边情报。<br>
     <b>语音输入：</b>位置栏和搜索框右侧各有一个麦克风按钮。请用 <b>http://localhost:8617</b> 打开本页（file:// 方式浏览器不弹麦克风授权框），首次点麦克风时在弹窗里点「允许」即可说话输入。<br>
     <b>搜索历史：</b>点一下位置框或商品框，会弹出该框的搜索历史，点历史项直接搜；可单条删除或一键清空（保存在本机浏览器）。
+  </div>
+</div>
+
+<!-- ===== 应用内嵌高德弹层 ===== -->
+<div class="modal-mask" id="modal-mask">
+  <div class="modal-box">
+    <div class="modal-loading" id="modal-loading">正在加载高德内容…</div>
+    <div class="modal-head">
+      <b id="modal-title">高德详情</b>
+      <button type="button" id="modal-open">外部打开</button>
+      <button type="button" id="modal-close">关闭</button>
+    </div>
+    <iframe id="modal-frame" title="高德内嵌内容" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"></iframe>
   </div>
 </div>
 
@@ -765,6 +812,46 @@
     return 'https://www.amap.com/ssr/search?query=' + query + '&city=500000';
   }
 
+  /* ===== 应用内嵌高德弹层 ===== */
+  var elsModal = {
+    mask: document.getElementById('modal-mask'),
+    title: document.getElementById('modal-title'),
+    frame: document.getElementById('modal-frame'),
+    loading: document.getElementById('modal-loading'),
+    close: document.getElementById('modal-close'),
+    open: document.getElementById('modal-open')
+  };
+  var modalCurrentUrl = '';
+  function openModal(url, title) {
+    modalCurrentUrl = url || '';
+    elsModal.title.textContent = title || '高德内容';
+    elsModal.loading.classList.remove('hide');
+    elsModal.frame.src = url;
+    elsModal.mask.classList.add('open');
+    document.body.style.overflow = 'hidden';
+    setTimeout(function () { elsModal.loading.classList.add('hide'); }, 3500);
+  }
+  function closeModal() {
+    elsModal.mask.classList.remove('open');
+    document.body.style.overflow = '';
+    setTimeout(function () { elsModal.frame.src = 'about:blank'; }, 200);
+  }
+  elsModal.close.addEventListener('click', closeModal);
+  elsModal.mask.addEventListener('click', function (e) { if (e.target === elsModal.mask) closeModal(); });
+  elsModal.open.addEventListener('click', function () {
+    if (modalCurrentUrl) window.open(modalCurrentUrl, '_blank', 'noopener');
+  });
+  /* 未收录位置 → 加入本机待抓列表（下次定时抓取时自动收录） */
+  function addPending(name) {
+    try {
+      var arr = JSON.parse(localStorage.getItem('lifecircle_pending') || '[]');
+      if (arr.indexOf(name) === -1) { arr.push(name); localStorage.setItem('lifecircle_pending', JSON.stringify(arr)); }
+    } catch (e) {}
+  }
+  function pendingTip(name) {
+    return '<br>这个位置还没收录进应用，我已把它加入<b>自动抓取队列</b>（本机记录），下次定时抓取（每天 0/12 点）会自动收录，之后点「搜周边」直接出列表。现在先看下面的高德实时结果。';
+  }
+
   /* ===== 辐射位置 ===== */
   function matchPreset(name) {
     var n = (name || '').trim();
@@ -902,8 +989,10 @@
         render();
         return;
       }
-      els.tip.innerHTML = '请在搜索框输入<b>要买的东西</b>（如：感冒药、充电线、矿泉水），再点「搜周边」。';
+      els.tip.innerHTML = '这个位置还没收录，已在应用内打开高德搜索结果（下方弹层）。在弹层里点目标地点 → 点【周边】即可看 1000 米内的店。' + pendingTip(centerName);
       els.tip.style.display = '';
+      addPending(centerName);
+      openModal(preset ? aroundUrl(preset, '') : 'https://www.amap.com/ssr/search?query=' + encodeURIComponent(centerName) + '&city=500000', '高德：' + centerName);
       renderPresets();
       return;
     }
@@ -911,17 +1000,19 @@
       state.q = kw;
       els.input.value = kw;
       els.tip.innerHTML = '已在应用内列出「<b>' + esc(centerName) + '</b>」周边匹配「' + esc(kw) + '」的店（内置收录 ' + currentPois().length + ' 家）。' +
-        (preset ? '<br>想要更全的实时结果，可<a href="' + aroundUrl(preset, kw) + '" target="_blank" rel="noopener">打开高德实时列表</a>。' : '');
+        (preset ? '<br>想要更全的实时结果，可<a href="javascript:void(0)" data-around="' + esc(aroundUrl(preset, kw)) + '">应用内打开高德实时列表</a>。' : '');
       els.tip.style.display = '';
       renderPresets();
       render();
       return;
     }
     if (preset) {
-      window.open(aroundUrl(preset, kw), '_blank', 'noopener');
+      openModal(aroundUrl(preset, kw), centerName + ' · 周边 1000 米（高德实时）');
+      els.tip.innerHTML = '已应用内打开「<b>' + esc(centerName) + '</b>」周边「' + esc(kw) + '」的高德实时结果，看完关掉即可。';
     } else {
-      window.open('https://www.amap.com/ssr/search?query=' + encodeURIComponent(centerName) + '&city=500000', '_blank', 'noopener');
-      els.tip.innerHTML = '已打开高德搜索「<b>' + esc(centerName) + '</b>」：点开目标地点 → 点【周边】→ 输入「' + esc(kw) + '」，即可看该位置 1000 米内的结果。<br>也可以把常用位置告诉我，我帮你抓一次存进应用，以后点「搜周边」直接出列表。';
+      addPending(centerName);
+      openModal('https://www.amap.com/ssr/search?query=' + encodeURIComponent(centerName) + '&city=500000', '高德搜索：' + centerName);
+      els.tip.innerHTML = '已应用内打开高德搜索「<b>' + esc(centerName) + '</b>」，可点页面里的目标地点看周边、输入「' + esc(kw) + '」筛选。' + pendingTip(centerName);
       els.tip.style.display = '';
     }
     renderPresets();
@@ -1068,7 +1159,7 @@
       var distText = walk(p.dist, p.loc);
       var badgeCls = p.dist === null ? 'gray' : (p.cat === '菜市场' || p.cat === '水果' ? 'orange' : '');
       return (
-        '<a class="item ' + (CAT_CLASS[p.cat] || '') + '" href="' + amapUrl(p) + '" target="_blank" rel="noopener" aria-label="在高德打开 ' + esc(p.name) + ' 的详情并导航">' +
+        '<a class="item ' + (CAT_CLASS[p.cat] || '') + '" href="javascript:void(0)" data-pid="' + esc(p.pid || '') + '" data-name="' + esc(p.name) + '" data-loc="' + esc(p.loc || '') + '" aria-label="查看 ' + esc(p.name) + ' 的高德详情并导航">' +
           '<div class="icon">' + iconFor(p.cat) + '</div>' +
           '<div class="body">' +
             '<div class="name">' + highlight(p.name, q) + '</div>' +
@@ -1078,7 +1169,7 @@
               '<span class="badge ' + badgeCls + '">' + distText + '</span>' +
             '</div>' +
           '</div>' +
-          '<div class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>去高德</div>' +
+          '<div class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>查看详情</div>' +
         '</a>'
       );
     }).join('');
@@ -1222,6 +1313,23 @@
     var now = els.pop.querySelector('.preset[data-preset="' + picked + '"], .preset[data-hot="' + picked + '"]');
     if (now) now.classList.add('active');
   });
+  /* 点击结果卡片 → 应用内嵌高德详情 */
+  els.list.addEventListener('click', function (e) {
+    var item = e.target.closest('.item');
+    if (!item) return;
+    var pid = item.getAttribute('data-pid');
+    var name = item.getAttribute('data-name') || '';
+    var loc = item.getAttribute('data-loc') || '';
+    var url = pid ? 'https://www.amap.com/ssr/search/poi_detail?id=' + encodeURIComponent(pid)
+                  : 'https://www.amap.com/ssr/search?query=' + encodeURIComponent(name + ' ' + loc) + '&city=500000';
+    openModal(url, name);
+  });
+  /* 提示里"应用内打开高德实时列表" */
+  els.tip.addEventListener('click', function (e) {
+    var a = e.target.closest('a[data-around]');
+    if (!a) return;
+    openModal(a.getAttribute('data-around'), '高德实时周边（1000 米）');
+  });
   /* 结果列表收缩/展开 */
   els.fold.addEventListener('click', function () {
     listFolded = !listFolded;
@@ -1243,9 +1351,9 @@
     var centerName = (els.center.value || '').trim() || DEFAULT_CENTER;
     var preset = matchPreset(centerName);
     if (preset) {
-      window.open(aroundUrl(preset, store), '_blank', 'noopener');
+      openModal(aroundUrl(preset, store), centerName + ' · ' + store + '（高德实时）');
     } else {
-      window.open('https://www.amap.com/ssr/search?query=' + encodeURIComponent(centerName) + '&city=500000', '_blank', 'noopener');
+      openModal('https://www.amap.com/ssr/search?query=' + encodeURIComponent(centerName) + '&city=500000', '高德搜索：' + centerName);
     }
   });
 
