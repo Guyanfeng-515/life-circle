@@ -644,8 +644,23 @@
         }
         updateDataNote(d.updated);
         render();
+        return d;
       })
+      .then(function () { return loadRemoteNetInfo(); })
       .catch(function () { /* 远程数据不可用（未部署/离线），使用内置 AREAS */ });
+  }
+  /* 远程网上/视频情报（定时抓取常态更新） */
+  function loadRemoteNetInfo() {
+    fetch('netinfo.json?v=' + Date.now(), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
+      .then(function (d) {
+        if (!d || typeof d !== 'object') return;
+        for (var k in d) {
+          if (Array.isArray(d[k]) && d[k].length) NETINFO[k] = d[k];
+        }
+        render();
+      })
+      .catch(function () { /* 无远程情报时使用内置 NETINFO */ });
   }
 
   /* ===== 网上 / 视频查到（NETINFO）=====
