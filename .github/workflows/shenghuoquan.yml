@@ -26,7 +26,7 @@ jobs:
       - name: 构建站点
         run: |
           mkdir -p _site/icons
-          cp index.html sw.js manifest.json data.json _site/
+          cp index.html sw.js manifest.json data.json netinfo.json _site/
           cp icons/icon.png _site/icons/
 
       - uses: actions/upload-pages-artifact@v3
