@@ -1,13 +1,12 @@
-name: 生活圈自动抓取
+name: 生活圈自动部署
 
 on:
-  schedule:
-    # 每天 0 点和 12 点（北京时间 = UTC 16:00 / 04:00）
-    - cron: '0 16,4 * * *'
-  workflow_dispatch: {}   # 支持手动触发一次
+  push:
+    branches: [main]
+  workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
   pages: write
   id-token: write
 
@@ -16,7 +15,7 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  fetch-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -24,31 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: 抓取高德周边数据
-        env:
-          AMAP_KEY: ${{ secrets.AMAP_KEY }}
-        run: node fetch_data.mjs
-
-      - name: 提交更新后的 data.json
+      - name: 构建站点
         run: |
-          git config user.name "life-bot"
-          git config user.email "actions@github.com"
-          git add data.json
-          git diff --cached --quiet || git commit -m "chore: 自动抓取更新周边数据 $(date '+%F %T %Z')"
-          git push
-
-      - name: 构建 Pages 站点
-        run: |
-          mkdir -p _site
+          mkdir -p _site/icons
           cp index.html sw.js manifest.json data.json _site/
-          cp -r icons _site/ 2>/dev/null || true
+          cp icons/icon.png _site/icons/
 
-      - name: 上传 Pages 产物
-        uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v3
         with:
           path: _site
 
