@@ -1,5 +1,5 @@
 ﻿/* 生活圈 · 周边搜索 Service Worker */
-var CACHE = 'shenghuoquan-v35';
+var CACHE = 'shenghuoquan-v36';
 var ASSETS = [
   './index.html',
   './manifest.json',
