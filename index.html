@@ -29,8 +29,6 @@
 
   /* ===== 头部 ===== */
   .hero { margin-bottom: 18px; }
-  .eyebrow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; letter-spacing: 0.02em; }
-  .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); }
   .hero h1 { font-size: 24px; font-weight: 700; letter-spacing: 0.01em; line-height: 1.3; }
   .hero p { font-size: 13px; color: var(--ink-2); margin-top: 6px; line-height: 1.6; }
 
@@ -38,12 +36,16 @@
   .region { margin-bottom: 14px; }
   .region-label { display: flex; align-items: center; justify-content: space-between; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; }
   .region-label b { color: var(--green); font-weight: 600; }
-  .region .eyebrow { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--ink-2); margin-bottom: 6px; letter-spacing: 0.02em; }
-  .region .eyebrow .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
   .region-form {
     position: relative;
-    display: flex; gap: 8px;
+    display: flex; gap: 8px; flex-wrap: wrap;
   }
+  .region-form .eyebrow {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 11px; color: var(--ink-2); margin-left: 4px;
+    white-space: nowrap; flex: 0 0 auto; letter-spacing: 0.02em;
+  }
+  .region-form .eyebrow .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
   .region-form input {
     flex: 1 1 auto; min-width: 0; padding: 12px 14px; font-size: 14px; color: var(--ink);
     background: var(--card); border: 1.5px solid var(--line); border-radius: 12px; outline: none;
@@ -303,12 +305,11 @@
   <!-- ===== 视图：头部 ===== -->
   <div class="hero">
     <h1>生活圈搜索</h1>
-    <p>输入位置和想买的东西，列出该位置 1000 米内能买到的地方，点击导航过去。</p>
+    <p>搜任意位置周边 1 公里：要买什么、哪里有卖、导航直达。</p>
   </div>
 
   <!-- ===== 视图：辐射位置 ===== -->
   <div class="region">
-    <div class="eyebrow"><span class="dot"></span><span id="eyebrow-place">重庆城市科技学院永川校区</span></div>
     <div class="region-label"><b>位置</b><span>（以它为中心搜 1000 米）</span></div>
     <div class="region-form">
       <input id="center" type="text" value="重庆城市科技学院永川校区" placeholder="输入重庆市任意位置，如：重庆来福士" autocomplete="off">
@@ -316,6 +317,7 @@
         <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"></rect><path d="M5 10v1a7 7 0 0 0 14 0v-1"></path><line x1="12" y1="18" x2="12" y2="21"></line></svg>
       </button>
       <button id="go" type="button">搜周边</button>
+      <div class="eyebrow"><span class="dot"></span><span id="eyebrow-place">重庆城市科技学院永川校区</span></div>
     </div>
     <div class="hist" id="hist-center" style="display:none;"></div>
     <div class="presets" id="presets"></div>
