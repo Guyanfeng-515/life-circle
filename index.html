@@ -1177,7 +1177,7 @@
       var distText = walk(p.dist, p.loc);
       var badgeCls = p.dist === null ? 'gray' : (p.cat === '菜市场' || p.cat === '水果' ? 'orange' : '');
       return (
-        '<a class="item ' + (CAT_CLASS[p.cat] || '') + '" href="javascript:void(0)" data-pid="' + esc(p.pid || '') + '" data-name="' + esc(p.name) + '" data-loc="' + esc(p.loc || '') + '" aria-label="查看 ' + esc(p.name) + ' 的高德详情并导航">' +
+        '<a class="item ' + (CAT_CLASS[p.cat] || '') + '" href="javascript:void(0)" data-pid="' + esc(p.pid || '') + '" data-name="' + esc(p.name) + '" data-loc="' + esc(p.loc || '') + '" data-lng="' + esc(p.lng || '') + '" data-lat="' + esc(p.lat || '') + '" aria-label="查看 ' + esc(p.name) + ' 的路线并导航">' +
           '<div class="icon">' + iconFor(p.cat) + '</div>' +
           '<div class="body">' +
             '<div class="name">' + highlight(p.name, q) + '</div>' +
@@ -1331,13 +1331,35 @@
     var now = els.pop.querySelector('.preset[data-preset="' + picked + '"], .preset[data-hot="' + picked + '"]');
     if (now) now.classList.add('active');
   });
-  /* 点击结果卡片 → 应用内嵌高德详情 */
+  /* 点击结果卡片 → 应用内打开路线规划：起点自动=我的位置，终点=这家店 */
+  function myPosition(timeoutMs) {
+    return new Promise(function (resolve) {
+      if (!('geolocation' in navigator)) return resolve(null);
+      navigator.geolocation.getCurrentPosition(
+        function (pos) { resolve([pos.coords.longitude, pos.coords.latitude]); },
+        function () { resolve(null); },
+        { timeout: timeoutMs || 4000, maximumAge: 60000 }
+      );
+    });
+  }
   els.list.addEventListener('click', function (e) {
     var item = e.target.closest('.item');
     if (!item) return;
     var pid = item.getAttribute('data-pid');
     var name = item.getAttribute('data-name') || '';
     var loc = item.getAttribute('data-loc') || '';
+    var lng = item.getAttribute('data-lng');
+    var lat = item.getAttribute('data-lat');
+    if (lng && lat) {
+      var base = 'https://www.amap.com/dir?mode=walk&to[latlng]=' + lng + ',' + lat + '&to[name]=' + encodeURIComponent(name);
+      openModal(base + '&from[latlng]=my_location&from[name]=我的位置', name + ' · 路线');
+      myPosition(4500).then(function (pos) {
+        if (!pos || !elsModal.mask.classList.contains('open')) return;
+        var url = base + '&from[latlng]=' + pos[0] + ',' + pos[1] + '&from[name]=我的位置';
+        elsModal.frame.src = url;
+      });
+      return;
+    }
     var url = pid ? 'https://www.amap.com/ssr/search/poi_detail?id=' + encodeURIComponent(pid)
                   : 'https://www.amap.com/ssr/search?query=' + encodeURIComponent(name + ' ' + loc) + '&city=500000';
     openModal(url, name);
