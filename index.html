@@ -927,7 +927,7 @@
       (groups[c] = groups[c] || []).push(n);
     });
     var cities = Object.keys(groups).sort(function (a, b) { return a.localeCompare(b, 'zh-CN'); });
-    var html = '<span class="preset" style="cursor:default;border-style:dashed;">可输入任意位置（热门地标直达高德周边）</span>';
+    var html = '<span class="preset" style="cursor:default;border-style:dashed;">任意位置可搜，热门地标直达</span>';
     html += cities.map(function (c) {
       return '<button class="preset city-btn" data-city="' + c + '" type="button">' + c +
         '<span class="c-count">' + groups[c].length + '</span></button>';
