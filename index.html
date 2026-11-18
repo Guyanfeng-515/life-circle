@@ -228,6 +228,17 @@
   }
   .item .go svg { width: 14px; height: 14px; }
   .item:hover .go { background: var(--green); color: #fff; }
+  .item .go { flex: 0 0 auto; margin-top: 2px; display: flex; align-items: center; background: none; padding: 0; }
+  .item .go-walk {
+    display: inline-flex; align-items: center; gap: 3px;
+    font-size: 12px; font-weight: 700; color: #fff; letter-spacing: 0.5px;
+    background: var(--green); border: 0; border-radius: 999px;
+    padding: 8px 12px; cursor: pointer; white-space: nowrap;
+    transition: transform 0.1s ease, background 0.15s ease;
+  }
+  .item .go-walk:hover { background: #25695B; }
+  .item .go-walk:active { transform: scale(0.94); }
+  .item .go-walk svg { width: 14px; height: 14px; }
   .item .icon {
     flex: 0 0 40px; width: 40px; height: 40px; border-radius: 11px;
     display: flex; align-items: center; justify-content: center;
@@ -1409,7 +1420,7 @@
               '<span class="badge ' + badgeCls + '">' + distText + '</span>' +
             '</div>' +
           '</div>' +
-          '<div class="go"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-5.2-7-11a7 7 0 0 1 14 0c0 5.8-7 11-7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></svg>查看详情</div>' +
+          '<div class="go"><button class="go-walk" type="button" data-walk="1" aria-label="直接看步行路线"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="4" r="2.1"></circle><path d="M9 21l2.4-6.2 3.2 2 1.4 4.2"></path><path d="M13.2 9.2l-3.4 3.2 1.2 4.4"></path><path d="M13.2 9.2l4.2.9 2.2 3.1"></path></svg>走</button></div>' +
         '</a>'
       );
     }).join('');
@@ -1587,6 +1598,22 @@
     var item = e.target.closest('.item');
     if (!item) return;
     e.preventDefault();
+    var goWalk = e.target.closest('[data-walk]');
+    if (goWalk) {
+      e.stopPropagation();
+      var wname = item.getAttribute('data-name') || '';
+      var wloc = item.getAttribute('data-loc') || '';
+      var wlng = item.getAttribute('data-lng');
+      var wlat = item.getAttribute('data-lat');
+      if (!wlng || !wlat) {
+        openModal('https://www.amap.com/ssr/search?query=' + encodeURIComponent(wname + ' ' + wloc) + '&city=500000', wname);
+        return;
+      }
+      var wbase = 'https://uri.amap.com/navigation?to=' + wlng + ',' + wlat + ',' + encodeURIComponent(wname) + '&mode=walk&coordinate=gaode&src=life-circle';
+      openPoiMap(wname, wlng, wlat, wloc, wbase);
+      startRouteView();
+      return;
+    }
     var pid = item.getAttribute('data-pid');
     var name = item.getAttribute('data-name') || '';
     var loc = item.getAttribute('data-loc') || '';
