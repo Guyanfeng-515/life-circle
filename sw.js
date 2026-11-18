@@ -1,5 +1,5 @@
 /* 生活圈 · 周边搜索 Service Worker */
-var CACHE = 'shenghuoquan-v43';
+var CACHE = 'shenghuoquan-v44';
 var ASSETS = [
   './index.html',
   './manifest.json',
@@ -21,7 +21,7 @@ self.addEventListener('fetch', function (e) {
   if (e.request.method !== 'GET') return;
   e.respondWith(
     fetch(e.request).then(function (res) {
-      if (res && res.status === 200 && (e.request.url.indexOf('http') === 0)) {
+      if (res && res.status === 200 && e.request.url.indexOf(self.location.origin) === 0) {
         var copy = res.clone();
         caches.open(CACHE).then(function (c) { c.put(e.request, copy); });
       }
