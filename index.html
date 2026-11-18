@@ -950,16 +950,96 @@
     elsModal.mask.classList.add('open');
     document.body.style.overflow = 'hidden';
   }
+  var modalPoint = null, routeDone = false;
   function openPoiMap(name, lng, lat, loc, navUrl) {
-    showMapView(name + ' · 位置', lng, lat, (loc || '') + '　红点为店铺位置，点右侧「导航」可唤起高德 App', navUrl, 17, null);
+    modalPoint = { name: name, lng: lng, lat: lat };
+    routeDone = false;
+    elsModal.nav.disabled = false;
+    elsModal.nav.textContent = '导航';
+    showMapView(name + ' · 位置', lng, lat, (loc || '') + '　红点为店铺位置，点「导航」先在应用内看怎么走', navUrl, 17, null);
   }
   function openAreaMap(name, preset) {
+    modalPoint = null; routeDone = true;
+    elsModal.nav.disabled = false; elsModal.nav.textContent = '导航';
     var list = (AREAS[name] || []).filter(function (p) { return p.lng && p.lat; });
     var others = list.map(function (p) { return p.lng + ',' + p.lat; });
     var nav = 'https://uri.amap.com/navigation?to=' + preset.lng + ',' + preset.lat + ',' + encodeURIComponent(name) + '&mode=walk&coordinate=gaode&src=life-circle';
     showMapView(name + ' · 周边 1000 米', preset.lng, preset.lat, '红点为位置中心，小点为已收录的 ' + list.length + ' 家周边店铺（最多显示 24 个）', nav, 15, others);
   }
   var modalCurrentUrl = '', modalAppUrl = '';
+  /* ===== 应用内步行路线：定位 + 高德步行规划 + 静态图绘制，不跳出应用 ===== */
+  function amapApi(path, params, cb) {
+    var qs = [];
+    for (var k in params) qs.push(k + '=' + encodeURIComponent(params[k]));
+    fetch('https://restapi.amap.com/v3/' + path + '?' + qs.join('&') + '&key=' + AMAP_KEY + '&output=json')
+      .then(function (r) { return r.json(); })
+      .then(function (j) { cb(j); })
+      .catch(function () { cb(null); });
+  }
+  function locateMe(cb) {
+    if (!navigator.geolocation) return cb(null);
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      var lng = pos.coords.longitude, lat = pos.coords.latitude;
+      amapApi('assistant/coordinate/convert', { locations: lng.toFixed(6) + ',' + lat.toFixed(6), coordsys: 'gps' }, function (j) {
+        if (j && j.status === '1' && j.locations) {
+          var a = j.locations.split(',');
+          cb({ lng: a[0], lat: a[1] });
+        } else {
+          cb({ lng: String(lng), lat: String(lat) });
+        }
+      });
+    }, function () { cb(null); }, { enableHighAccuracy: true, timeout: 9000, maximumAge: 300000 });
+  }
+  function buildRouteMap(from, to, pts, dist) {
+    var stepN = Math.max(1, Math.ceil(pts.length / 60));
+    var pl = [];
+    for (var i = 0; i < pts.length; i += stepN) pl.push(pts[i]);
+    if (pts.length && pl[pl.length - 1] !== pts[pts.length - 1]) pl.push(pts[pts.length - 1]);
+    var c = pts.length ? pts[Math.floor(pts.length / 2)] : (to.lng + ',' + to.lat);
+    var z = (dist && dist < 600) ? 16 : ((dist && dist < 1600) ? 15 : 14);
+    return 'https://restapi.amap.com/v3/staticmap?location=' + c + '&zoom=' + z + '&size=750*500&key=' + AMAP_KEY +
+      '&markers=large,0x2E7D5B,A:' + from.lng + ',' + from.lat +
+      '&markers=large,0xFF5A3D,B:' + to.lng + ',' + to.lat +
+      '&paths=8,0x2E7D5B,1,,:' + pl.join(';') + '&_t=' + Date.now();
+  }
+  function startRouteView() {
+    var to = modalPoint;
+    if (!to) return;
+    elsModal.nav.disabled = true;
+    elsModal.nav.textContent = '定位中…';
+    elsModal.mapnote.textContent = '正在获取你的位置，计算步行路线…';
+    locateMe(function (from) {
+      if (!from) {
+        elsModal.nav.disabled = false;
+        elsModal.nav.textContent = '导航';
+        elsModal.mapnote.textContent = '没拿到定位权限。在手机上允许定位后就能看步行路线；也可以点「地图App打开」直接进高德。';
+        return;
+      }
+      amapApi('direction/walking', { origin: from.lng + ',' + from.lat, destination: to.lng + ',' + to.lat }, function (j) {
+        elsModal.nav.disabled = false;
+        if (!j || j.status !== '1' || !j.route || !j.route.paths || !j.route.paths.length) {
+          elsModal.nav.textContent = '导航';
+          elsModal.mapnote.textContent = '这段距离高德没给出步行路线，点「地图App打开」可直接进高德导航。';
+          return;
+        }
+        var path0 = j.route.paths[0];
+        var pts = [], seen = {};
+        (path0.steps || []).forEach(function (st) {
+          (st.polyline || '').split(';').forEach(function (pt) {
+            if (pt && !seen[pt]) { seen[pt] = 1; pts.push(pt); }
+          });
+        });
+        var dist = parseInt(path0.distance, 10) || 0;
+        var dur = parseInt(path0.duration, 10) || 0;
+        elsModal.map.src = buildRouteMap(from, to, pts, dist);
+        elsModal.mapnote.textContent = '绿点＝你　红点＝' + to.name + '　步行 ' +
+          (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') +
+          ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟';
+        elsModal.nav.textContent = '高德App导航';
+        routeDone = true;
+      });
+    });
+  }
   function openModal(url, title) {
     modalCurrentUrl = url || '';
     modalAppUrl = (modalCurrentUrl.indexOf('https://uri.amap.com/') === 0) ? modalCurrentUrl + '&callnative=1' : modalCurrentUrl;
@@ -987,7 +1067,11 @@
     a.click();
     setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 400);
   }
-  elsModal.nav.addEventListener('click', function () { openExternal(modalAppUrl || modalCurrentUrl); });  elsModal.close.addEventListener('click', closeModal);
+  elsModal.nav.addEventListener('click', function () {
+    if (modalPoint && !routeDone) { startRouteView(); return; }
+    openExternal(modalAppUrl || modalCurrentUrl);
+  });
+  elsModal.close.addEventListener('click', closeModal);
   elsModal.mask.addEventListener('click', function (e) { if (e.target === elsModal.mask) closeModal(); });
   elsModal.open.addEventListener('click', function () {
     openExternal(modalAppUrl || modalCurrentUrl);
