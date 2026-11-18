@@ -10,6 +10,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <link rel="apple-touch-icon" href="./icons/icon.png">
 <link rel="icon" type="image/png" href="./icons/icon.png">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 <style>
   :root {
     --bg: #F5F6F3;
@@ -327,6 +329,9 @@
   .modal-mapwrap { flex: 1; min-height: 0; display: none; flex-direction: column; background: #fff; }
   .modal-mapwrap.show { display: flex; }
   #modal-map { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: cover; background: #F2F5F6; }
+  .modal-map { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: cover; background: #F2F5F6; }
+  .leaflet-container { background: #F2F5F6; font-family: inherit; }
+  .leaflet-control-zoom a { color: #22303A; }
   .modal-mapbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
   .mm-note { flex: 1; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
   #modal-nav {
@@ -427,7 +432,8 @@
       <button type="button" id="modal-close">关闭</button>
     </div>
     <div class="modal-mapwrap" id="modal-mapwrap">
-      <img id="modal-map" alt="高德地图" referrerpolicy="no-referrer">
+      <div id="modal-map" class="modal-map"></div>
+      <img id="modal-map-img" class="modal-map" alt="高德地图" referrerpolicy="no-referrer" style="display:none">
       <div class="modal-mapbar">
         <div class="mm-note" id="modal-mapnote"></div>
         <button type="button" id="modal-nav">导航</button>
@@ -936,6 +942,7 @@
     open: document.getElementById('modal-open'),
     mapwrap: document.getElementById('modal-mapwrap'),
     map: document.getElementById('modal-map'),
+    mapImg: document.getElementById('modal-map-img'),
     mapnote: document.getElementById('modal-mapnote'),
     nav: document.getElementById('modal-nav')
   };
@@ -948,18 +955,99 @@
     if (others && others.length) u += '&markers=small,0x2E7D5B:' + others.slice(0, 24).join(';');
     return u;
   }
+  /* ===== 可拖动 / 可缩放的真实地图（Leaflet + 高德瓦片） ===== */
+  var leafMap = null, leafObjs = [], leafWatch = null, leafMe = null;
+  function leafOk() { return !!(window.L && elsModal.map); }
+  function ensureLeaf() {
+    if (leafMap) return leafMap;
+    leafMap = L.map(elsModal.map, { zoomControl: true, attributionControl: false, preferCanvas: true });
+    L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
+      subdomains: '1234', maxZoom: 18, minZoom: 3
+    }).addTo(leafMap);
+    return leafMap;
+  }
+  function dotIcon(color, px) {
+    return L.divIcon({
+      className: '',
+      html: '<div style="width:' + px + 'px;height:' + px + 'px;border-radius:50%;background:' + color +
+            ';border:3px solid #fff;box-shadow:0 2px 8px rgba(0,0,0,.28)"></div>',
+      iconSize: [px, px], iconAnchor: [px / 2, px / 2]
+    });
+  }
+  function clearLeaf() {
+    if (!leafMap) return;
+    for (var i = 0; i < leafObjs.length; i++) leafMap.removeLayer(leafObjs[i]);
+    leafObjs = [];
+    leafMe = null;
+  }
+  function stopWatch() {
+    if (leafWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(leafWatch);
+    leafWatch = null;
+  }
+  function watchMe() {
+    if (leafWatch !== null || !navigator.geolocation) return;
+    leafWatch = navigator.geolocation.watchPosition(function (pos) {
+      var lng = pos.coords.longitude.toFixed(6), lat = pos.coords.latitude.toFixed(6);
+      amapApi('assistant/coordinate/convert', { locations: lng + ',' + lat, coordsys: 'gps' }, function (j) {
+        if (!leafMap || !leafMe) return;
+        var c = (j && j.status === '1' && j.locations) ? j.locations.split(',') : [lng, lat];
+        leafMe.setLatLng([+c[1], +c[0]]);
+        if (!leafMap.getBounds().contains([+c[1], +c[0]])) leafMap.panTo([+c[1], +c[0]]);
+      });
+    }, function () {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 12000 });
+  }
+  function drawLeafRoute(from, to, pts) {
+    var m = ensureLeaf();
+    clearLeaf();
+    var line = L.polyline(pts.map(function (sp) { var a = sp.split(','); return [+a[1], +a[0]]; }), {
+      color: '#2E7D6E', weight: 7, opacity: 0.92
+    }).addTo(m);
+    leafObjs.push(line);
+    leafMe = L.marker([+from.lat, +from.lng], { icon: dotIcon('#1E6FD9', 22), zIndexOffset: 1200 }).addTo(m);
+    leafObjs.push(leafMe);
+    leafObjs.push(L.marker([+to.lat, +to.lng], { icon: dotIcon('#FF5A3D', 22), zIndexOffset: 1000 }).addTo(m));
+    m.fitBounds(line.getBounds().pad(0.18), { animate: false });
+    watchMe();
+  }
   function showMapView(title, lng, lat, note, navUrl, zoom, others) {
     elsModal.loading.classList.add('hide');
     elsModal.frame.style.display = 'none';
     elsModal.frame.src = 'about:blank';
     elsModal.mapwrap.classList.add('show');
-    elsModal.map.src = staticMapUrl(lng, lat, zoom || 16, others);
     elsModal.mapnote.textContent = note || '';
     modalCurrentUrl = navUrl || '';
     modalAppUrl = navUrl ? (navUrl + '&callnative=1') : '';
     elsModal.title.textContent = title || '高德地图';
     elsModal.mask.classList.add('open');
     document.body.style.overflow = 'hidden';
+    stopWatch();
+    if (leafOk()) {
+      elsModal.mapImg.style.display = 'none';
+      elsModal.mapImg.src = '';
+      var m = ensureLeaf();
+      clearLeaf();
+      leafObjs.push(L.marker([+lat, +lng], { icon: dotIcon('#FF5A3D', 22) }).addTo(m));
+      if (others && others.length) {
+        for (var i = 0; i < Math.min(others.length, 40); i++) {
+          var a = String(others[i]).split(',');
+          if (a.length === 2) leafObjs.push(L.marker([+a[1], +a[0]], { icon: dotIcon('#2E7D6E', 13) }).addTo(m));
+        }
+      }
+      setTimeout(function () {
+        m.invalidateSize();
+        if (others && others.length) {
+          var b = L.latLngBounds([]);
+          for (var k = 0; k < leafObjs.length; k++) { if (leafObjs[k].getLatLng) b.extend(leafObjs[k].getLatLng()); }
+          if (b.isValid()) m.fitBounds(b.pad(0.2), { animate: false });
+          else m.setView([+lat, +lng], zoom || 16, { animate: false });
+        } else {
+          m.setView([+lat, +lng], zoom || 16, { animate: false });
+        }
+      }, 90);
+    } else {
+      elsModal.mapImg.style.display = '';
+      elsModal.mapImg.src = staticMapUrl(lng, lat, zoom || 16, others);
+    }
   }
   var modalPoint = null, routeDone = false;
   function openPoiMap(name, lng, lat, loc, navUrl) {
@@ -1043,7 +1131,12 @@
         });
         var dist = parseInt(path0.distance, 10) || 0;
         var dur = parseInt(path0.duration, 10) || 0;
-        elsModal.map.src = buildRouteMap(from, to, pts, dist);
+        if (leafOk()) {
+          drawLeafRoute(from, to, pts);
+        } else {
+          elsModal.mapImg.style.display = '';
+          elsModal.mapImg.src = buildRouteMap(from, to, pts, dist);
+        }
         elsModal.mapnote.textContent = '绿点＝你　红点＝' + to.name + '　步行 ' +
           (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') +
           ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟';
@@ -1067,7 +1160,11 @@
   function closeModal() {
     elsModal.mask.classList.remove('open');
     document.body.style.overflow = '';
-    setTimeout(function () { elsModal.frame.src = 'about:blank'; elsModal.map.src = ''; }, 200);
+    stopWatch();
+    setTimeout(function () {
+      elsModal.frame.src = 'about:blank';
+      if (elsModal.mapImg) elsModal.mapImg.src = '';
+    }, 200);
   }
   function openExternal(url) {
     if (!url) return;
