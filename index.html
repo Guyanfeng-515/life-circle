@@ -975,10 +975,20 @@
     document.body.style.overflow = '';
     setTimeout(function () { elsModal.frame.src = 'about:blank'; elsModal.map.src = ''; }, 200);
   }
-  elsModal.close.addEventListener('click', closeModal);
+  function openExternal(url) {
+    if (!url) return;
+    var a = document.createElement('a');
+    a.href = url;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { if (a.parentNode) a.parentNode.removeChild(a); }, 400);
+  }
+  elsModal.nav.addEventListener('click', function () { openExternal(modalAppUrl || modalCurrentUrl); });  elsModal.close.addEventListener('click', closeModal);
   elsModal.mask.addEventListener('click', function (e) { if (e.target === elsModal.mask) closeModal(); });
   elsModal.open.addEventListener('click', function () {
-    if (modalAppUrl) window.open(modalAppUrl, '_blank', 'noopener');
+    openExternal(modalAppUrl || modalCurrentUrl);
   });
   /* 未收录位置 → 加入本机待抓列表（下次定时抓取时自动收录） */
   function addPending(name) {
