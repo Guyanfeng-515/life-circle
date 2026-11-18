@@ -199,7 +199,7 @@
   .netinfo .ni-src a:hover { text-decoration: underline; }
 
   /* ===== 结果统计 ===== */
-  .meta { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+  .meta { display: flex; flex-wrap: wrap; justify-content: flex-start; align-items: center; gap: 8px; margin-bottom: 10px; }
   .meta .count { font-size: 13px; color: var(--ink-2); }
   .meta .count b { color: var(--green); font-size: 15px; }
   .fold-btn {
@@ -271,9 +271,9 @@
     position: fixed; inset: 0; z-index: 999;
     background: rgba(15, 23, 30, 0.6);
     display: flex; align-items: center; justify-content: center;
-    opacity: 0; pointer-events: none; transition: opacity 0.18s ease;
+    display: none;
   }
-  .modal-mask.open { opacity: 1; pointer-events: auto; }
+  .modal-mask.open { display: flex; }
   .modal-box {
     background: #fff; border-radius: 14px; overflow: hidden;
     width: min(760px, 96vw); height: min(88vh, 760px);
@@ -299,6 +299,30 @@
   }
   .modal-box { position: relative; }
   .modal-loading.hide { display: none; }
+
+  /* ===== 分批加载 / 地图入口 ===== */
+  .more-wrap { display: none; margin-top: 12px; }
+  .more-wrap.show { display: block; }
+  .more-btn { width: 100%; padding: 12px; border: 1.5px dashed var(--line); border-radius: 12px; background: var(--card); color: var(--green); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; }
+  .more-btn:hover { border-color: var(--green); background: var(--green-soft); }
+  .more-btn:active { transform: scale(0.99); }
+  .map-btn { display: inline-flex; align-items: center; gap: 5px; margin: 0; padding: 6px 11px; border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--ink-2); font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
+  .map-btn:hover { border-color: var(--green); color: var(--green); }
+  .map-btn:active { transform: scale(0.97); }
+  .map-btn svg { width: 14px; height: 14px; }
+  .meta .fold-btn { margin-left: auto; }
+  .meta .hint { flex: 1 0 100%; }
+  /* ===== 弹层内静态地图视图 ===== */
+  .modal-mapwrap { flex: 1; min-height: 0; display: none; flex-direction: column; background: #fff; }
+  .modal-mapwrap.show { display: flex; }
+  #modal-map { flex: 1 1 auto; min-height: 0; width: 100%; object-fit: cover; background: #F2F5F6; }
+  .modal-mapbar { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-top: 1px solid var(--line); }
+  .mm-note { flex: 1; font-size: 12px; line-height: 1.5; color: var(--ink-2); }
+  #modal-nav {
+    flex-shrink: 0; border: 0; border-radius: 10px; padding: 10px 16px;
+    background: var(--green); color: #fff; font-size: 13px; font-weight: 600; cursor: pointer;
+  }
+  #modal-nav:active { transform: scale(0.97); }
 </style>
 </head>
 <body>
@@ -356,12 +380,16 @@
   <!-- ===== 视图：结果 ===== -->
   <div class="meta">
     <div class="count" id="count"></div>
+    <button class="map-btn" id="map-btn" type="button" title="在地图上查看该位置周边">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3l6 2 6-2v16l-6 2-6-2-6 2V5z"></path><path d="M9 3v16"></path><path d="M15 5v16"></path></svg>地图看周边
+    </button>
     <button class="fold-btn" id="fold-btn" type="button" aria-label="收缩/展开列表" title="收缩/展开列表">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path class="fold-arrow" d="M6 9l6 6 6-6"></path></svg>
     </button>
     <div class="hint">距离为高德标注，步行按约 80 米/分钟估算</div>
   </div>
   <div class="list" id="list"></div>
+  <div class="more-wrap" id="more-wrap"><button class="more-btn" id="more-btn" type="button"></button></div>
   <div class="empty" id="empty" style="display:none;"></div>
 
   <!-- ===== 视图：网上情报（列表下方） ===== -->
@@ -383,8 +411,15 @@
     <div class="modal-loading" id="modal-loading">正在加载高德内容…</div>
     <div class="modal-head">
       <b id="modal-title">高德详情</b>
-      <button type="button" id="modal-open">外部打开</button>
+      <button type="button" id="modal-open">地图App打开</button>
       <button type="button" id="modal-close">关闭</button>
+    </div>
+    <div class="modal-mapwrap" id="modal-mapwrap">
+      <img id="modal-map" alt="高德地图" referrerpolicy="no-referrer">
+      <div class="modal-mapbar">
+        <div class="mm-note" id="modal-mapnote"></div>
+        <button type="button" id="modal-nav">导航</button>
+      </div>
     </div>
     <iframe id="modal-frame" title="高德内嵌内容" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-downloads"></iframe>
   </div>
@@ -643,7 +678,7 @@
         if (!d || !d.areas) return;
         var n = 0;
         for (var k in d.areas) {
-          if (Array.isArray(d.areas[k]) && d.areas[k].length) { AREAS[k] = d.areas[k]; n += d.areas[k].length; }
+          if (Array.isArray(d.areas[k]) && d.areas[k].length) { var cl = cleanPois(d.areas[k]); if (cl.length) { AREAS[k] = cl; n += cl.length; } }
         }
         updateDataNote(d.updated);
         render();
@@ -659,7 +694,7 @@
       .then(function (d) {
         if (!d || typeof d !== 'object') return;
         for (var k in d) {
-          if (Array.isArray(d[k]) && d[k].length) NETINFO[k] = d[k];
+          if (Array.isArray(d[k]) && d[k].length) NETINFO[k] = cleanNet(d[k]);
         }
         render();
       })
@@ -776,9 +811,13 @@
     presets: document.getElementById('presets'),
     pop: document.getElementById('presets-pop'),
     tip: document.getElementById('tip'),
-    guide: document.getElementById('guide')
+    guide: document.getElementById('guide'),
+    map: document.getElementById('map-btn'),
+    moreWrap: document.getElementById('more-wrap'),
+    moreBtn: document.getElementById('more-btn')
   };
   var debounceTimer = null;
+  var shownCount = 40, lastViewKey = '';
 
   /* ===== 工具 ===== */
   function esc(s) {
@@ -824,6 +863,50 @@
     return '<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16"></path><path d="M4 12h16"></path><path d="M4 17h10"></path></svg>';
   }
 
+  /* ===== 数据清洗：远程 JSON 只接受合法字段，防脏数据/注入 ===== */
+  function cleanPoi(p) {
+    if (!p || typeof p !== 'object') return null;
+    var name = String(p.name || '').slice(0, 80);
+    if (!name) return null;
+    var pidOk = /^[A-Za-z0-9_\-]{1,32}$/.test(String(p.pid || ''));
+    var lngOk = /^-?\d{1,3}\.\d{1,8}$/.test(String(p.lng || ''));
+    var latOk = /^-?\d{1,2}\.\d{1,8}$/.test(String(p.lat || ''));
+    var d = (typeof p.dist === 'number' && isFinite(p.dist) && p.dist >= 0) ? p.dist : null;
+    return {
+      name: name,
+      cat: String(p.cat || '').slice(0, 16),
+      dist: d,
+      loc: String(p.loc || '').slice(0, 120),
+      pid: pidOk ? String(p.pid) : '',
+      lng: lngOk ? String(p.lng) : '',
+      lat: latOk ? String(p.lat) : ''
+    };
+  }
+  function cleanPois(list) {
+    if (!Array.isArray(list)) return [];
+    var out = [], seen = {};
+    for (var i = 0; i < list.length && out.length < 1500; i++) {
+      var c = cleanPoi(list[i]);
+      if (!c || seen[c.name]) continue;
+      seen[c.name] = 1;
+      out.push(c);
+    }
+    return out;
+  }
+  function cleanNet(list) {
+    if (!Array.isArray(list)) return [];
+    var out = [], seen = {};
+    for (var i = 0; i < list.length && out.length < 30; i++) {
+      var it = list[i] || {};
+      var name = String(it.name || '').slice(0, 80);
+      if (!name || seen[name]) continue;
+      seen[name] = 1;
+      var url = String(it.url || '').slice(0, 300);
+      if (url && !/^https?:\/\//i.test(url)) url = '';
+      out.push({ name: name, loc: String(it.loc || '').slice(0, 60), note: String(it.note || '').slice(0, 400), src: String(it.src || '').slice(0, 40), url: url });
+    }
+    return out;
+  }
   function amapUrl(p) {
     if (p.pid) return 'https://www.amap.com/ssr/search/poi_detail?id=' + p.pid;
     var query = encodeURIComponent(p.name + ' ' + p.loc);
@@ -837,12 +920,50 @@
     frame: document.getElementById('modal-frame'),
     loading: document.getElementById('modal-loading'),
     close: document.getElementById('modal-close'),
-    open: document.getElementById('modal-open')
+    open: document.getElementById('modal-open'),
+    mapwrap: document.getElementById('modal-mapwrap'),
+    map: document.getElementById('modal-map'),
+    mapnote: document.getElementById('modal-mapnote'),
+    nav: document.getElementById('modal-nav')
   };
-  var modalCurrentUrl = '';
+  /* ===== 高德静态地图（直接以图片内嵌，避免第三方页面被 iframe 拦截） ===== */
+  var AMAP_KEY = '4504e1f04faa1afea3e4f120222abdcb';
+  function staticMapUrl(lng, lat, zoom, others) {
+    var u = 'https://restapi.amap.com/v3/staticmap?location=' + lng + ',' + lat +
+            '&zoom=' + zoom + '&size=750*500&key=' + AMAP_KEY +
+            '&markers=large,0xFF5A3D,A:' + lng + ',' + lat;
+    if (others && others.length) u += '&markers=small,0x2E7D5B:' + others.slice(0, 24).join(';');
+    return u;
+  }
+  function showMapView(title, lng, lat, note, navUrl, zoom, others) {
+    elsModal.loading.classList.add('hide');
+    elsModal.frame.style.display = 'none';
+    elsModal.frame.src = 'about:blank';
+    elsModal.mapwrap.classList.add('show');
+    elsModal.map.src = staticMapUrl(lng, lat, zoom || 16, others);
+    elsModal.mapnote.textContent = note || '';
+    modalCurrentUrl = navUrl || '';
+    modalAppUrl = navUrl ? (navUrl + '&callnative=1') : '';
+    elsModal.title.textContent = title || '高德地图';
+    elsModal.mask.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  function openPoiMap(name, lng, lat, loc, navUrl) {
+    showMapView(name + ' · 位置', lng, lat, (loc || '') + '　红点为店铺位置，点右侧「导航」可唤起高德 App', navUrl, 17, null);
+  }
+  function openAreaMap(name, preset) {
+    var list = (AREAS[name] || []).filter(function (p) { return p.lng && p.lat; });
+    var others = list.map(function (p) { return p.lng + ',' + p.lat; });
+    var nav = 'https://uri.amap.com/navigation?to=' + preset.lng + ',' + preset.lat + ',' + encodeURIComponent(name) + '&mode=walk&coordinate=gaode&src=life-circle';
+    showMapView(name + ' · 周边 1000 米', preset.lng, preset.lat, '红点为位置中心，小点为已收录的 ' + list.length + ' 家周边店铺（最多显示 24 个）', nav, 15, others);
+  }
+  var modalCurrentUrl = '', modalAppUrl = '';
   function openModal(url, title) {
     modalCurrentUrl = url || '';
+    modalAppUrl = (modalCurrentUrl.indexOf('https://uri.amap.com/') === 0) ? modalCurrentUrl + '&callnative=1' : modalCurrentUrl;
     elsModal.title.textContent = title || '高德内容';
+    elsModal.mapwrap.classList.remove('show');
+    elsModal.frame.style.display = '';
     elsModal.loading.classList.remove('hide');
     elsModal.frame.src = url;
     elsModal.mask.classList.add('open');
@@ -852,18 +973,19 @@
   function closeModal() {
     elsModal.mask.classList.remove('open');
     document.body.style.overflow = '';
-    setTimeout(function () { elsModal.frame.src = 'about:blank'; }, 200);
+    setTimeout(function () { elsModal.frame.src = 'about:blank'; elsModal.map.src = ''; }, 200);
   }
   elsModal.close.addEventListener('click', closeModal);
   elsModal.mask.addEventListener('click', function (e) { if (e.target === elsModal.mask) closeModal(); });
   elsModal.open.addEventListener('click', function () {
-    if (modalCurrentUrl) window.open(modalCurrentUrl, '_blank', 'noopener');
+    if (modalAppUrl) window.open(modalAppUrl, '_blank', 'noopener');
   });
   /* 未收录位置 → 加入本机待抓列表（下次定时抓取时自动收录） */
   function addPending(name) {
     try {
       var arr = JSON.parse(localStorage.getItem('lifecircle_pending') || '[]');
-      if (arr.indexOf(name) === -1) { arr.push(name); localStorage.setItem('lifecircle_pending', JSON.stringify(arr)); }
+      name = String(name || '').slice(0, 40);
+      if (name && arr.indexOf(name) === -1) { arr.push(name); localStorage.setItem('lifecircle_pending', JSON.stringify(arr.slice(-50))); }
     } catch (e) {}
   }
   function pendingTip(name) {
@@ -909,7 +1031,7 @@
     var active = (cur === pr);
     var isHot = HOT_SPOTS.indexOf(pr) !== -1;
     return '<button class="preset' + (active ? ' active' : '') + '"' +
-      (isHot ? ' data-hot="' + pr + '"' : ' data-preset="' + pr + '"') + '>' + pr + '</button>';
+      (isHot ? ' data-hot="' + esc(pr) + '"' : ' data-preset="' + esc(pr) + '"') + '>' + esc(pr) + '</button>';
   }
   function allPositions() {
     var seen = {}, out = [];
@@ -1018,7 +1140,7 @@
       state.q = kw;
       els.input.value = kw;
       els.tip.innerHTML = '已在应用内列出「<b>' + esc(centerName) + '</b>」周边匹配「' + esc(kw) + '」的店（内置收录 ' + currentPois().length + ' 家）。' +
-        (preset ? '<br>想要更全的实时结果，可<a href="javascript:void(0)" data-around="' + esc(aroundUrl(preset, kw)) + '">应用内打开高德实时列表</a>。' : '');
+        (preset ? '<br>想要更全的实时结果，可<a href="#" data-around="' + esc(aroundUrl(preset, kw)) + '">应用内打开高德实时列表</a>。' : '');
       els.tip.style.display = '';
       renderPresets();
       render();
@@ -1100,6 +1222,9 @@
 
   function render() {
     var items = filter();
+    var viewKey = (state.q || '') + '|' + state.cat + '|' + (els.center.value || '').trim();
+    if (viewKey !== lastViewKey) { lastViewKey = viewKey; shownCount = 40; }
+    var view = items.slice(0, shownCount);
     var total = currentPois().length;
     var centerName = (els.center.value || '').trim() || DEFAULT_CENTER;
     var hasArea = !!AREAS[centerName];
@@ -1172,18 +1297,18 @@
     }
 
     els.empty.style.display = 'none';
-    els.list.innerHTML = items.map(function (p) {
+    els.list.innerHTML = view.map(function (p) {
       var q = state.q.trim();
       var distText = walk(p.dist, p.loc);
       var badgeCls = p.dist === null ? 'gray' : (p.cat === '菜市场' || p.cat === '水果' ? 'orange' : '');
       return (
-        '<a class="item ' + (CAT_CLASS[p.cat] || '') + '" href="javascript:void(0)" data-pid="' + esc(p.pid || '') + '" data-name="' + esc(p.name) + '" data-loc="' + esc(p.loc || '') + '" data-lng="' + esc(p.lng || '') + '" data-lat="' + esc(p.lat || '') + '" aria-label="查看 ' + esc(p.name) + ' 的路线并导航">' +
+        '<a class="item ' + (CAT_CLASS[p.cat] || '') + '" href="#" data-pid="' + esc(p.pid || '') + '" data-name="' + esc(p.name) + '" data-loc="' + esc(p.loc || '') + '" data-lng="' + esc(p.lng || '') + '" data-lat="' + esc(p.lat || '') + '" aria-label="查看 ' + esc(p.name) + ' 的路线并导航">' +
           '<div class="icon">' + iconFor(p.cat) + '</div>' +
           '<div class="body">' +
             '<div class="name">' + highlight(p.name, q) + '</div>' +
             '<div class="loc">' + esc(p.loc || '') + '</div>' +
             '<div class="badges">' +
-              '<span class="badge">' + p.cat + '</span>' +
+              '<span class="badge">' + esc(p.cat) + '</span>' +
               '<span class="badge ' + badgeCls + '">' + distText + '</span>' +
             '</div>' +
           '</div>' +
@@ -1191,7 +1316,9 @@
         '</a>'
       );
     }).join('');
-    if (listFolded) {
+    var rest = items.length - view.length;
+    els.moreWrap.classList.toggle('show', rest > 0);
+    els.moreBtn.textContent = rest > 0 ? ('显示更多（还有 ' + rest + ' 家）') : '';    if (listFolded) {
       els.list.style.display = 'none';
       els.empty.style.display = 'none';
     }
@@ -1273,6 +1400,14 @@
   window.addEventListener('resize', updateCsBtns);
   updateCsBtns();
   els.go.addEventListener('click', runAround);
+  if (els.moreBtn) els.moreBtn.addEventListener('click', function () { shownCount += 60; render(); });
+  if (els.map) els.map.addEventListener('click', function () {
+    var n = (els.center.value || '').trim() || DEFAULT_CENTER;
+    var pr = matchPreset(n);
+    if (pr && pr.lng && pr.lat) openAreaMap(n, pr);
+    else if (pr) openModal(aroundUrl(pr, ''), n + ' · 周边 1000 米地图');
+    else openModal('https://www.amap.com/ssr/search?query=' + encodeURIComponent(n) + '&city=500000', '高德搜索：' + n);
+  });
   els.center.addEventListener('input', function () {
     state.cat = '全部';
     renderChips();
@@ -1345,19 +1480,15 @@
   els.list.addEventListener('click', function (e) {
     var item = e.target.closest('.item');
     if (!item) return;
+    e.preventDefault();
     var pid = item.getAttribute('data-pid');
     var name = item.getAttribute('data-name') || '';
     var loc = item.getAttribute('data-loc') || '';
     var lng = item.getAttribute('data-lng');
     var lat = item.getAttribute('data-lat');
     if (lng && lat) {
-      var base = 'https://www.amap.com/dir?mode=walk&to[latlng]=' + lng + ',' + lat + '&to[name]=' + encodeURIComponent(name);
-      openModal(base + '&from[latlng]=my_location&from[name]=我的位置', name + ' · 路线');
-      myPosition(4500).then(function (pos) {
-        if (!pos || !elsModal.mask.classList.contains('open')) return;
-        var url = base + '&from[latlng]=' + pos[0] + ',' + pos[1] + '&from[name]=我的位置';
-        elsModal.frame.src = url;
-      });
+      var base = 'https://uri.amap.com/navigation?to=' + lng + ',' + lat + ',' + encodeURIComponent(name) + '&mode=walk&coordinate=gaode&src=life-circle';
+      openPoiMap(name, lng, lat, loc, base);
       return;
     }
     var url = pid ? 'https://www.amap.com/ssr/search/poi_detail?id=' + encodeURIComponent(pid)
@@ -1368,6 +1499,7 @@
   els.tip.addEventListener('click', function (e) {
     var a = e.target.closest('a[data-around]');
     if (!a) return;
+    e.preventDefault();
     openModal(a.getAttribute('data-around'), '高德实时周边（1000 米）');
   });
   /* 结果列表收缩/展开 */
