@@ -988,7 +988,7 @@
           cb({ lng: String(lng), lat: String(lat) });
         }
       });
-    }, function () { cb(null); }, { enableHighAccuracy: true, timeout: 9000, maximumAge: 300000 });
+    }, function () { cb(null); }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 300000 });
   }
   function buildRouteMap(from, to, pts, dist) {
     var stepN = Math.max(1, Math.ceil(pts.length / 60));
@@ -1011,8 +1011,9 @@
     locateMe(function (from) {
       if (!from) {
         elsModal.nav.disabled = false;
-        elsModal.nav.textContent = '导航';
-        elsModal.mapnote.textContent = '没拿到定位权限。在手机上允许定位后就能看步行路线；也可以点「地图App打开」直接进高德。';
+        elsModal.nav.textContent = '高德App导航';
+        routeDone = true;
+        elsModal.mapnote.textContent = '没拿到定位权限，应用内算不了路线。点「高德App导航」直接进高德；在浏览器里允许定位后重开弹层即可看路线。';
         return;
       }
       amapApi('direction/walking', { origin: from.lng + ',' + from.lat, destination: to.lng + ',' + to.lat }, function (j) {
