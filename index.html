@@ -1137,7 +1137,7 @@
           elsModal.mapImg.style.display = '';
           elsModal.mapImg.src = buildRouteMap(from, to, pts, dist);
         }
-        elsModal.mapnote.textContent = '绿点＝你　红点＝' + to.name + '　步行 ' +
+        elsModal.mapnote.textContent = '蓝点＝你　红点＝' + to.name + '　步行 ' +
           (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') +
           ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟';
         elsModal.nav.textContent = '高德App导航';
