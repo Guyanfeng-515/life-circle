@@ -380,6 +380,7 @@
   <!-- ===== 视图：结果 ===== -->
   <div class="meta">
     <div class="count" id="count"></div>
+    <button class="map-btn" id="refresh-btn" type="button" title="重新拉取最新周边数据">刷新</button>
     <button class="map-btn" id="map-btn" type="button" title="在地图上查看该位置周边">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3l6 2 6-2v16l-6 2-6-2-6 2V5z"></path><path d="M9 3v16"></path><path d="M15 5v16"></path></svg>地图看周边
     </button>
@@ -672,7 +673,7 @@
     el.innerHTML = s;
   }
   function loadRemoteData() {
-    fetch('data.json?v=' + Date.now(), { cache: 'no-store' })
+    return fetch('data.json?v=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (d) {
         if (!d || !d.areas) return;
@@ -689,7 +690,7 @@
   }
   /* 远程网上/视频情报（定时抓取常态更新） */
   function loadRemoteNetInfo() {
-    fetch('netinfo.json?v=' + Date.now(), { cache: 'no-store' })
+    return fetch('netinfo.json?v=' + Date.now(), { cache: 'no-store' })
       .then(function (r) { if (!r.ok) throw new Error('http ' + r.status); return r.json(); })
       .then(function (d) {
         if (!d || typeof d !== 'object') return;
@@ -813,6 +814,7 @@
     tip: document.getElementById('tip'),
     guide: document.getElementById('guide'),
     map: document.getElementById('map-btn'),
+    refresh: document.getElementById('refresh-btn'),
     moreWrap: document.getElementById('more-wrap'),
     moreBtn: document.getElementById('more-btn')
   };
@@ -931,7 +933,7 @@
   function staticMapUrl(lng, lat, zoom, others) {
     var u = 'https://restapi.amap.com/v3/staticmap?location=' + lng + ',' + lat +
             '&zoom=' + zoom + '&size=750*500&key=' + AMAP_KEY +
-            '&markers=large,0xFF5A3D,A:' + lng + ',' + lat;
+            '&markers=large,0xFF5A3D,A:' + lng + ',' + lat + '&_t=' + Date.now();
     if (others && others.length) u += '&markers=small,0x2E7D5B:' + others.slice(0, 24).join(';');
     return u;
   }
@@ -1409,6 +1411,15 @@
   els.chips.addEventListener('scroll', updateCsBtns, { passive: true });
   window.addEventListener('resize', updateCsBtns);
   updateCsBtns();
+  if (els.refresh) els.refresh.addEventListener('click', function () {
+    if (els.refresh.disabled) return;
+    els.refresh.disabled = true;
+    els.refresh.textContent = '更新中…';
+    loadRemoteData().then(function () {
+      els.refresh.disabled = false;
+      els.refresh.textContent = '刷新';
+    });
+  });
   els.go.addEventListener('click', runAround);
   if (els.moreBtn) els.moreBtn.addEventListener('click', function () { shownCount += 60; render(); });
   if (els.map) els.map.addEventListener('click', function () {
