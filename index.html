@@ -957,7 +957,7 @@
   }
   /* ===== 可拖动 / 可缩放的真实地图（Leaflet + 高德瓦片） ===== */
   var leafMap = null, leafObjs = [], leafWatch = null, leafMe = null;
-  var leafLine = null, routeTo = null, routeFrom = null, routeTimer = null, lastRecalcAt = 0;
+  var leafLine = null, routeTo = null, routeFrom = null, routeTimer = null, lastRecalcAt = 0, leafAcc = null;
   function leafOk() { return !!(window.L && elsModal.map); }
   function ensureLeaf() {
     if (leafMap) return leafMap;
@@ -965,6 +965,13 @@
     L.tileLayer('https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=8&x={x}&y={y}&z={z}', {
       subdomains: '1234', maxZoom: 18, minZoom: 3
     }).addTo(leafMap);
+    leafMap.on('click', function (e) {
+      if (!routeTo) return;
+      routeFrom = { lng: e.latlng.lng.toFixed(6), lat: e.latlng.lat.toFixed(6), acc: 0 };
+      if (leafMe) leafMe.setLatLng(e.latlng);
+      if (leafAcc) { leafAcc.setLatLng(e.latlng); leafAcc.setRadius(0.01); }
+      refreshRoute();
+    });
     return leafMap;
   }
   function dotIcon(color, px) {
@@ -985,16 +992,17 @@
     if (leafWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(leafWatch);
     leafWatch = null;
     if (routeTimer) { clearInterval(routeTimer); routeTimer = null; }
-    routeTo = null; routeFrom = null; leafLine = null;
+    routeTo = null; routeFrom = null; leafLine = null; leafAcc = null;
   }
   function watchMe() {
     if (leafWatch !== null || !navigator.geolocation) return;
     leafWatch = navigator.geolocation.watchPosition(function (pos) {
-      var lng = pos.coords.longitude.toFixed(6), lat = pos.coords.latitude.toFixed(6);
+      var lng = pos.coords.longitude.toFixed(6), lat = pos.coords.latitude.toFixed(6), acc = pos.coords.accuracy || 0;
       amapApi('assistant/coordinate/convert', { locations: lng + ',' + lat, coordsys: 'gps' }, function (j) {
         if (!leafMap || !leafMe) return;
         var c = (j && j.status === '1' && j.locations) ? j.locations.split(',') : [lng, lat];
         leafMe.setLatLng([+c[1], +c[0]]);
+        if (leafAcc) { leafAcc.setLatLng([+c[1], +c[0]]); leafAcc.setRadius(Math.max(1, Math.min(acc, 400))); }
         if (!leafMap.getBounds().contains([+c[1], +c[0]])) leafMap.panTo([+c[1], +c[0]]);
         var now = { lng: c[0], lat: c[1] };
         if (routeFrom && Date.now() - lastRecalcAt > 5000 && metersBetween(routeFrom, now) > 50) {
@@ -1003,7 +1011,7 @@
           refreshRoute();
         }
       });
-    }, function () {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 12000 });
+    }, function () {}, { enableHighAccuracy: true, maximumAge: 2000, timeout: 12000 });
   }
   function drawLeafRoute(from, to, pts) {
     var m = ensureLeaf();
@@ -1016,10 +1024,20 @@
     leafMe = L.marker([+from.lat, +from.lng], { icon: dotIcon('#1E6FD9', 22), zIndexOffset: 1200 }).addTo(m);
     leafObjs.push(leafMe);
     leafObjs.push(L.marker([+to.lat, +to.lng], { icon: dotIcon('#FF5A3D', 22), zIndexOffset: 1000 }).addTo(m));
+    leafAcc = L.circle([+from.lat, +from.lng], {
+      radius: Math.max(1, Math.min(from.acc || 30, 400)), color: '#1E6FD9', weight: 1,
+      opacity: 0.7, fillColor: '#1E6FD9', fillOpacity: 0.12
+    }).addTo(m);
+    leafObjs.push(leafAcc);
     m.fitBounds(line.getBounds().pad(0.18), { animate: false });
     watchMe();
     if (routeTimer) clearInterval(routeTimer);
     routeTimer = setInterval(refreshRoute, 30000);
+  }
+  function accHint(acc) {
+    if (!acc || acc <= 0) return '';
+    if (acc > 150) return '　定位较粗（±' + Math.round(acc) + ' 米），点一下地图可修正起点';
+    return '　定位 ±' + Math.round(acc) + ' 米';
   }
   function metersBetween(a, b) {
     var dx = (a.lng - b.lng) * 111000 * Math.cos(((Number(a.lat) + Number(b.lat)) / 2) * Math.PI / 180);
@@ -1042,7 +1060,7 @@
       var dist = parseInt(p0.distance, 10) || 0, dur = parseInt(p0.duration, 10) || 0;
       if (elsModal.mapnote && elsModal.mapnote.textContent.indexOf('步行') !== -1) {
         elsModal.mapnote.textContent = '蓝点＝你　红点＝' + to.name + '　步行 ' +
-          (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') + ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟';
+          (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') + ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟' + accHint(routeFrom && routeFrom.acc);
       }
     });
   }
@@ -1112,19 +1130,40 @@
       .then(function (j) { cb(j); })
       .catch(function () { cb(null); });
   }
+  function toGaode(pos, done) {
+    var lng = pos.coords.longitude, lat = pos.coords.latitude;
+    var acc = pos.coords.accuracy || 0;
+    amapApi('assistant/coordinate/convert', { locations: lng.toFixed(6) + ',' + lat.toFixed(6), coordsys: 'gps' }, function (j) {
+      var c = (j && j.status === '1' && j.locations) ? j.locations.split(',') : [String(lng), String(lat)];
+      done({ lng: c[0], lat: c[1], acc: acc });
+    });
+  }
+  function refineRoute(fix) {
+    if (!routeTo || !fix) return;
+    routeFrom = { lng: fix.lng, lat: fix.lat, acc: fix.acc };
+    if (leafMe) leafMe.setLatLng([+fix.lat, +fix.lng]);
+    if (leafAcc) { leafAcc.setLatLng([+fix.lat, +fix.lng]); leafAcc.setRadius(Math.max(1, Math.min(fix.acc || 30, 400))); }
+    lastRecalcAt = Date.now();
+    refreshRoute();
+  }
   function locateMe(cb) {
     if (!navigator.geolocation) return cb(null);
+    var fired = false, bestAcc = null;
+    var opt = { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 };
     navigator.geolocation.getCurrentPosition(function (pos) {
-      var lng = pos.coords.longitude, lat = pos.coords.latitude;
-      amapApi('assistant/coordinate/convert', { locations: lng.toFixed(6) + ',' + lat.toFixed(6), coordsys: 'gps' }, function (j) {
-        if (j && j.status === '1' && j.locations) {
-          var a = j.locations.split(',');
-          cb({ lng: a[0], lat: a[1] });
-        } else {
-          cb({ lng: String(lng), lat: String(lat) });
-        }
+      toGaode(pos, function (fix) {
+        if (fired) return;
+        fired = true; bestAcc = fix.acc; cb(fix);
       });
-    }, function () { cb(null); }, { enableHighAccuracy: true, timeout: 6000, maximumAge: 300000 });
+    }, function () { if (!fired) { fired = true; cb(null); } }, opt);
+    setTimeout(function () {
+      navigator.geolocation.getCurrentPosition(function (pos) {
+        toGaode(pos, function (fix) {
+          if (!fired) { fired = true; bestAcc = fix.acc; cb(fix); return; }
+          if (bestAcc && fix.acc && fix.acc + 15 < bestAcc) { bestAcc = fix.acc; refineRoute(fix); }
+        });
+      }, function () {}, opt);
+    }, 1500);
   }
   function buildRouteMap(from, to, pts, dist) {
     var stepN = Math.max(1, Math.ceil(pts.length / 60));
@@ -1176,7 +1215,7 @@
         }
         elsModal.mapnote.textContent = '蓝点＝你　红点＝' + to.name + '　步行 ' +
           (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') +
-          ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟';
+          ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟' + accHint(from.acc);
         elsModal.nav.textContent = '高德App导航';
         routeDone = true;
       });
