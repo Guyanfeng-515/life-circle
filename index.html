@@ -958,6 +958,30 @@
   /* ===== 可拖动 / 可缩放的真实地图（Leaflet + 高德瓦片） ===== */
   var leafMap = null, leafObjs = [], leafWatch = null, leafMe = null;
   var leafLine = null, routeTo = null, routeFrom = null, routeTimer = null, lastRecalcAt = 0, leafAcc = null;
+  var myAddr = '';
+  var FIX_KEY = 'life-circle-fix';
+  function loadFix() {
+    try {
+      var raw = localStorage.getItem(FIX_KEY);
+      if (!raw) return null;
+      var o = JSON.parse(raw);
+      if (o && o.lng && o.lat && (Date.now() - (o.t || 0) < 86400000)) return o;
+    } catch (e) {}
+    return null;
+  }
+  function saveFix(f) {
+    try { localStorage.setItem(FIX_KEY, JSON.stringify({ lng: f.lng, lat: f.lat, t: Date.now() })); } catch (e) {}
+  }
+  function regeoName(lng, lat, cb) {
+    amapApi('geocode/regeo', { location: lng + ',' + lat, extensions: 'all', radius: 300 }, function (j) {
+      if (!j || j.status !== '1' || !j.regeocode) return cb('');
+      var r = j.regeocode, p = (r.pois && r.pois[0]) || null;
+      var name = (p && p.name) ? String(p.name) : String(r.formatted_address || '');
+      var d = (p && p.distance) ? parseInt(p.distance, 10) : 0;
+      if (name.length > 22) name = name.slice(0, 22) + '…';
+      cb(name + (d ? '（约 ' + d + ' 米）' : ''));
+    });
+  }
   function leafOk() { return !!(window.L && elsModal.map); }
   function ensureLeaf() {
     if (leafMap) return leafMap;
@@ -967,9 +991,10 @@
     }).addTo(leafMap);
     leafMap.on('click', function (e) {
       if (!routeTo) return;
-      routeFrom = { lng: e.latlng.lng.toFixed(6), lat: e.latlng.lat.toFixed(6), acc: 0 };
+      routeFrom = { lng: e.latlng.lng.toFixed(6), lat: e.latlng.lat.toFixed(6), acc: 0, fixed: true };
       if (leafMe) leafMe.setLatLng(e.latlng);
       if (leafAcc) { leafAcc.setLatLng(e.latlng); leafAcc.setRadius(0.01); }
+      saveFix(routeFrom);
       refreshRoute();
     });
     return leafMap;
@@ -992,7 +1017,7 @@
     if (leafWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(leafWatch);
     leafWatch = null;
     if (routeTimer) { clearInterval(routeTimer); routeTimer = null; }
-    routeTo = null; routeFrom = null; leafLine = null; leafAcc = null;
+    routeTo = null; routeFrom = null; leafLine = null; leafAcc = null; myAddr = '';
   }
   function watchMe() {
     if (leafWatch !== null || !navigator.geolocation) return;
@@ -1036,7 +1061,7 @@
   }
   function accHint(acc) {
     if (!acc || acc <= 0) return '';
-    if (acc > 150) return '　定位较粗（±' + Math.round(acc) + ' 米），点一下地图可修正起点';
+    if (acc > 60) return '　定位约 ±' + Math.round(acc) + ' 米（电脑靠 WiFi 估算），点一下地图上你的位置更准';
     return '　定位 ±' + Math.round(acc) + ' 米';
   }
   function metersBetween(a, b) {
@@ -1060,7 +1085,9 @@
       var dist = parseInt(p0.distance, 10) || 0, dur = parseInt(p0.duration, 10) || 0;
       if (elsModal.mapnote && elsModal.mapnote.textContent.indexOf('步行') !== -1) {
         elsModal.mapnote.textContent = '蓝点＝你　红点＝' + to.name + '　步行 ' +
-          (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') + ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟' + accHint(routeFrom && routeFrom.acc);
+          (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') + ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟' + accHint(routeFrom && routeFrom.acc) +
+          (routeFrom && routeFrom.fixed ? '　（已按你点的位置）' : '') +
+          (myAddr ? '　你在：' + myAddr : '');
       }
     });
   }
@@ -1184,6 +1211,12 @@
     elsModal.nav.textContent = '定位中…';
     elsModal.mapnote.textContent = '正在获取你的位置，计算步行路线…';
     locateMe(function (from) {
+      if (from && from.acc > 60) {
+        var fx = loadFix();
+        if (fx && metersBetween({ lng: fx.lng, lat: fx.lat }, from) < 2000) {
+          from = { lng: fx.lng, lat: fx.lat, acc: from.acc, fixed: true };
+        }
+      }
       if (!from) {
         elsModal.nav.disabled = false;
         elsModal.nav.textContent = '高德App导航';
@@ -1215,9 +1248,17 @@
         }
         elsModal.mapnote.textContent = '蓝点＝你　红点＝' + to.name + '　步行 ' +
           (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') +
-          ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟' + accHint(from.acc);
+          ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟' + accHint(from.acc) +
+          (from.fixed ? '　（用上次校准的位置）' : '') +
+          (myAddr ? '　你在：' + myAddr : '');
         elsModal.nav.textContent = '高德App导航';
         routeDone = true;
+        regeoName(from.lng, from.lat, function (nm) {
+          myAddr = nm;
+          if (nm && elsModal.mapnote && elsModal.mapnote.textContent.indexOf('步行') !== -1) {
+            elsModal.mapnote.textContent += '　你在：' + nm;
+          }
+        });
       });
     });
   }
