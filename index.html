@@ -957,6 +957,7 @@
   }
   /* ===== 可拖动 / 可缩放的真实地图（Leaflet + 高德瓦片） ===== */
   var leafMap = null, leafObjs = [], leafWatch = null, leafMe = null;
+  var leafLine = null, routeTo = null, routeFrom = null, routeTimer = null, lastRecalcAt = 0;
   function leafOk() { return !!(window.L && elsModal.map); }
   function ensureLeaf() {
     if (leafMap) return leafMap;
@@ -983,6 +984,8 @@
   function stopWatch() {
     if (leafWatch !== null && navigator.geolocation) navigator.geolocation.clearWatch(leafWatch);
     leafWatch = null;
+    if (routeTimer) { clearInterval(routeTimer); routeTimer = null; }
+    routeTo = null; routeFrom = null; leafLine = null;
   }
   function watchMe() {
     if (leafWatch !== null || !navigator.geolocation) return;
@@ -993,6 +996,12 @@
         var c = (j && j.status === '1' && j.locations) ? j.locations.split(',') : [lng, lat];
         leafMe.setLatLng([+c[1], +c[0]]);
         if (!leafMap.getBounds().contains([+c[1], +c[0]])) leafMap.panTo([+c[1], +c[0]]);
+        var now = { lng: c[0], lat: c[1] };
+        if (routeFrom && Date.now() - lastRecalcAt > 5000 && metersBetween(routeFrom, now) > 50) {
+          lastRecalcAt = Date.now();
+          routeFrom = now;
+          refreshRoute();
+        }
       });
     }, function () {}, { enableHighAccuracy: true, maximumAge: 5000, timeout: 12000 });
   }
@@ -1003,11 +1012,39 @@
       color: '#2E7D6E', weight: 7, opacity: 0.92
     }).addTo(m);
     leafObjs.push(line);
+    leafLine = line; routeTo = to; routeFrom = from;
     leafMe = L.marker([+from.lat, +from.lng], { icon: dotIcon('#1E6FD9', 22), zIndexOffset: 1200 }).addTo(m);
     leafObjs.push(leafMe);
     leafObjs.push(L.marker([+to.lat, +to.lng], { icon: dotIcon('#FF5A3D', 22), zIndexOffset: 1000 }).addTo(m));
     m.fitBounds(line.getBounds().pad(0.18), { animate: false });
     watchMe();
+    if (routeTimer) clearInterval(routeTimer);
+    routeTimer = setInterval(refreshRoute, 30000);
+  }
+  function metersBetween(a, b) {
+    var dx = (a.lng - b.lng) * 111000 * Math.cos(((Number(a.lat) + Number(b.lat)) / 2) * Math.PI / 180);
+    var dy = (a.lat - b.lat) * 111000;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  function refreshRoute() {
+    if (!routeTo || !routeFrom) return;
+    var from = routeFrom, to = routeTo;
+    amapApi('direction/walking', { origin: from.lng + ',' + from.lat, destination: to.lng + ',' + to.lat }, function (j) {
+      if (!j || j.status !== '1' || !j.route || !j.route.paths || !j.route.paths.length) return;
+      var p0 = j.route.paths[0];
+      var pts = [], seen = {};
+      (p0.steps || []).forEach(function (st) {
+        (st.polyline || '').split(';').forEach(function (pt) {
+          if (pt && !seen[pt]) { seen[pt] = 1; pts.push(pt); }
+        });
+      });
+      if (leafLine) leafLine.setLatLngs(pts.map(function (sp) { var a = sp.split(','); return [+a[1], +a[0]]; }));
+      var dist = parseInt(p0.distance, 10) || 0, dur = parseInt(p0.duration, 10) || 0;
+      if (elsModal.mapnote && elsModal.mapnote.textContent.indexOf('步行') !== -1) {
+        elsModal.mapnote.textContent = '蓝点＝你　红点＝' + to.name + '　步行 ' +
+          (dist >= 1000 ? (dist / 1000).toFixed(1) + ' 公里' : dist + ' 米') + ' · 约 ' + Math.max(1, Math.round(dur / 60)) + ' 分钟';
+      }
+    });
   }
   function showMapView(title, lng, lat, note, navUrl, zoom, others) {
     elsModal.loading.classList.add('hide');
